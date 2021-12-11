@@ -170,32 +170,65 @@ StopLCD_wait:               ; Turn off screen so we can define our patterns
 
 
 
-    ; init x pos
+    ; init xy pos of sprite 1
     ld a, &58
     ld (Sprite1X), a
+    ld a, &30
+    ld (Sprite1Y), a
 
     ; init timer
     ld a, 0
     ld (&ff06), a       ; Reset timer by this much every clock
-    ld a, %00000100     ; 00, 11, 10, 01 (slowest to fastest)
+    ld a, %00000111     ; 00, 11, 10, 01 (slowest to fastest)
     ld (&ff07), a       ; Timer control, b2 = start timer, b0/1 = clock speed
 
 
 
 ; End of game code
 
+
+
 ; Main game loop
 .loop:
 
-; TODO stopped here
-; .checkInput
-;     ld a, %11101111     ; directionals
-;     ld (&ff00), a
-;     ld a, (&ff00)       ; buttons
-;     or %11110000
-;     cp 255
-;     jr z, .checkInput    ; if no keys were pressed, loop
+    ; Reset all input states before checking every loop
+    xor a
+    ld (InputState), a
 
+    ld a, %11101111         ; directionals keys
+    ld (InputState), a
+    ld a, (InputState)      ; read values
+    or %11110000            ; ignore upper nibbles
+
+    ; ld a, %11011111       ; action keys
+    ; ld (InputState), a
+    ; ld a, (InputState)    ; read values
+    ; or %11110000          ; ignore upper nibbles
+
+; .checkRight:
+;     cp %11111110        ; right
+;     jr nz, .checkLeft   ; if no keys were pressed, skip to next part
+;     push af
+;         ld a, (InputState)
+;         or %00000001
+;         ld (InputState), a
+;     pop af
+; .checkLeft:
+;     cp %11111101        ; left
+;     jr nz, .checkUp
+;     push af
+;         ld a, (InputState)
+;         or %00000010
+;         ld (InputState), a
+;     pop af
+; .checkUp:
+;     cp %11111011        ; up
+;     jr nz, .checkDown
+; .checkDown:
+;     cp %11110111        ; down
+;     jr nz, .update
+
+.update
     call UpdateSpritePosition
 
     jr .loop
@@ -210,12 +243,12 @@ GBSpriteCache equ &C000                 ; Address of sprite buffer
 VBlankInterruptHandler equ &FF80        ; available address for DMA
 Sprite1X equ &c999
 Sprite1Y equ &c998
-Input equ &ff00
+InputState equ &ff00                    ; 0 = R, 1 = L, 2 = U, 3 = D
 
 UpdateSpritePosition:
     push af
     push bc
-        ld a, &30
+        ld a, (Sprite1Y)
         ld c, a
         ld a, (Sprite1X)
         ld b, a
@@ -232,11 +265,52 @@ UpdateSpritePosition:
 
 ; updates sprite movement
 TimerInterrupt:
-    push af
-        ld a, (Sprite1X)
-        inc a
-        ld (Sprite1X), a
-    pop af
+    push bc
+        ; Load XY pos
+        push af
+            ld a, (Sprite1X)
+            ld b, a
+            ld a, (Sprite1Y)
+            ld c, a
+        pop af
+
+        ; Update XY pos
+        push af
+.checkRight
+            ld a, (InputState)
+            and %00000001
+            cp %00000001
+            jr z, .checkLeft
+            inc b
+.checkLeft
+            ld a, (InputState)
+            and %00000010
+            cp %00000010
+            jr z, .checkUp
+            dec b
+.checkUp
+            ld a, (InputState)
+            and %00000100
+            cp %00000100
+            jr z, .checkDown
+            dec c
+.checkDown
+            ld a, (InputState)
+            and %00001000
+            cp %00001000
+            jr z, .done
+            inc c
+.done
+        pop af
+
+        ; Save XY pos
+        push af
+            ld a, b
+            ld (Sprite1X), a
+            ld a, c
+            ld (Sprite1Y), a
+        pop af
+    pop bc
     reti
 
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
