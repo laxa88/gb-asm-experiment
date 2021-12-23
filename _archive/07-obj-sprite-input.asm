@@ -15,8 +15,6 @@
     pop af
     endm
 
-
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Input demo
 
@@ -44,8 +42,6 @@
     org &0134
 	db "LWY GAME"
     org &0150
-
-
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ; Start of code (setup)
@@ -115,15 +111,16 @@ StopLCD_wait:               ; Turn off screen so we can define our patterns
     set 1, (hl)         ; Turn on Sprites
 
 
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-; Game init code
+; Actual game code
 
     ; draw 6x6 tile image
     ld bc, &0101            ; X,Y position
     ld hl, &0606            ; W/H (tile count)
     ld e, &80               ; starting tile number
     call FillAreaWithTiles  ; fill grid area with consecutive tiles
+
+
 
 ; Note:
 ; - $c000 - $cfff = WRAM bank 0
@@ -168,6 +165,10 @@ StopLCD_wait:               ; Turn off screen so we can define our patterns
     ld a, %00000101   ; turn on interrupts
     ld (&ffff), a
     ei
+    ; call WaitForScreenRefresh
+
+
+
 
     ; init xy pos of sprite 1
     ld a, &58
@@ -183,118 +184,11 @@ StopLCD_wait:               ; Turn off screen so we can define our patterns
 
 
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+; End of game code
+
+
+
 ; Main game loop
-
-; Sound ref: https://www.chibiakumas.com/z80/platform3.php#LessonP21
-
-; Channel 1 - Tone and sweep
-SOUND_CH1_TON equ &ff10
-SOUND_CH1_LEN equ &ff11
-SOUND_CH1_ENV equ &ff12
-SOUND_CH1_FRL equ &ff13
-SOUND_CH1_FRH equ &ff14
-
-; Channel 2 - Tone
-SOUND_CH2_LEN equ &ff16
-SOUND_CH2_ENV equ &ff17
-SOUND_CH2_FRL equ &ff18
-SOUND_CH2_FRH equ &ff19
-
-; Channel 3 - Wave
-SOUND_CH3_TOG equ &ff1a
-SOUND_CH3_LEN equ &ff1b
-SOUND_CH3_LVL equ &ff1c
-SOUND_CH3_FRL equ &ff1d
-SOUND_CH3_FRH equ &ff1e
-
-; Channel 4 - Noise
-SOUND_CH4_LEN equ &ff20
-SOUND_CH4_ENV equ &ff21
-SOUND_CH4_POL equ &ff22
-SOUND_CH4_CON equ &ff23
-
-; Sound control
-SOUND_VOLUME equ &ff24          ; -LLL-RRR (7 = loudest)
-SOUND_MIXER equ &ff25           ; LLLLRRRR (sound channel 4321 L, 4321 R)
-SOUND_TOGGLE equ &ff26
-
-; Wave (channel 3) data
-SOUND_WAV_START equ &ff30       ; ff30 ~ ff3f (32 4-bit wave patterns)
-SOUND_WAV_END equ &ff3f
-
-; Sound logic
-
-    ld a, %01110111
-    ld (SOUND_VOLUME), a
-    ld a, %11111111
-    ld (SOUND_MIXER), a
-
-    ; Channel 2 - Tone
-    ld a, %00111111
-    ld (SOUND_CH2_LEN), a
-    ld a, %11111100
-    ld (SOUND_CH2_ENV), a
-    ld a, %11111111
-    ld (SOUND_CH2_FRL), a
-    ld a, %10000011
-    ld (SOUND_CH2_FRH), a
-
-    ; Channel 1 - Tone and Sweep
-    ld a, %01111111
-    ld (SOUND_CH1_TON), a
-    ld a, %00111111
-    ld (SOUND_CH1_LEN), a
-    ld a, %11111100
-    ld (SOUND_CH1_ENV), a
-    ld a, %11111111
-    ld (SOUND_CH1_FRL), a
-    ld a, %10000011
-    ld (SOUND_CH1_FRH), a
-
-    ; Channel 3 - Wave
-    xor a
-    ld b, %11111111
-    ld hl, SOUND_WAV_START
-    ldi (hl), a     ; 1
-    ldi (hl), a     ; 2
-    ldi (hl), a     ; 3
-    ldi (hl), a     ; 4
-    ldi (hl), a     ; 5
-    ldi (hl), a     ; 6
-    ldi (hl), a     ; 7
-    ld (hl), b     ; 8 (some sound)
-    inc hl
-    ldi (hl), a     ; 1
-    ldi (hl), a     ; 2
-    ldi (hl), a     ; 3
-    ldi (hl), a     ; 4
-    ldi (hl), a     ; 5
-    ldi (hl), a     ; 6
-    ldi (hl), a     ; 7
-    ld (hl), b     ; 8 (some sound)
-
-    ld a, %00100000
-    ld (SOUND_CH3_LVL), a
-    ld a, 0
-    ld (SOUND_CH3_LEN), a
-    ld a, %10000000
-    ld (SOUND_CH3_TOG), a
-    ld a, %11111111
-    ld (SOUND_CH3_FRL), a
-    ld a, %11000011
-    ld (SOUND_CH3_FRH), a
-
-    ; Channel 4 - Noise
-    ld a, %00001111
-    ld (SOUND_CH4_LEN), a
-    ld a, %11111000
-    ld (SOUND_CH4_ENV), a
-    ld a, %01110111
-    ld (SOUND_CH4_POL), a
-    ld a, %10000000
-    ld (SOUND_CH4_CON), a
-
 .loop:
 
     ; Reset all input states before checking every loop
@@ -306,7 +200,37 @@ SOUND_WAV_END equ &ff3f
     ld a, (InputState)      ; read values
     or %11110000            ; ignore upper nibbles
 
+    ; ld a, %11011111       ; action keys
+    ; ld (InputState), a
+    ; ld a, (InputState)    ; read values
+    ; or %11110000          ; ignore upper nibbles
+
+; .checkRight:
+;     cp %11111110        ; right
+;     jr nz, .checkLeft   ; if no keys were pressed, skip to next part
+;     push af
+;         ld a, (InputState)
+;         or %00000001
+;         ld (InputState), a
+;     pop af
+; .checkLeft:
+;     cp %11111101        ; left
+;     jr nz, .checkUp
+;     push af
+;         ld a, (InputState)
+;         or %00000010
+;         ld (InputState), a
+;     pop af
+; .checkUp:
+;     cp %11111011        ; up
+;     jr nz, .checkDown
+; .checkDown:
+;     cp %11110111        ; down
+;     jr nz, .update
+
+.update
     call UpdateSpritePosition
+
     jr .loop
 
 
@@ -405,6 +329,21 @@ DMACopyWait:
     pop af
     reti
 DMACopyEnd:
+
+
+
+; WaitForScreenRefresh:
+;     push af
+;         ld a, (&ff40)       ; get lcd control
+;         or %00000010        ; turn on OBJ (sprite) bit
+;         ld (&ff40), a       ; update lcd control
+; WaitForScreenRefreshB:
+;         ld a, (&ff44)       ; get Vblank line
+;         cp 145              ; if value is 145, we're done rendering 144 lines
+;         jr nz, WaitForScreenRefreshB
+;     pop af
+;     ret
+
 
 
 ; Set sprite
