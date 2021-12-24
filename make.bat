@@ -1,7 +1,7 @@
 @REM Silences the commands below
 @echo off
 
-set filename=02-load-tile
+set filename=03-load-sprite
 set toolpath=.\tools\rgbds-0.5.1-win32\
 set binpath=.\bin\
 
