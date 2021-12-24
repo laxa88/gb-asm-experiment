@@ -2,6 +2,11 @@
 ; http://www.devrs.com/gb/hmgd/gbtd.html
 
 INCLUDE "hardware.inc"
+INCLUDE "util.asm"
+
+SECTION "VBlank interrupt", ROM0[$40]
+
+  jp _HRAM
 
 SECTION "Header", ROM0[$100]
 
@@ -16,6 +21,20 @@ EntryPoint:
 	; Shut down audio circuitry
 	xor a
 	ld [rNR52], a
+
+  ; Copy vblank interrupt handler to HRAM
+  ld bc, DMACopyEnd - DMACopy     ; length of code
+  ld hl, DMACopy                  ; origin
+  ld de, _HRAM                    ; destination (ff80)
+  z_ldir
+
+  ; clear OAM cache data
+  xor a
+  ld [_RAM], a
+  ld hl, _RAM
+  ld de, _RAM + 1
+  ld bc, $a0 - 1              ; 159 loops (160 times)
+  z_ldir
 
 	; Do not turn the LCD off outside of VBlank
 WaitVBlank:
@@ -45,17 +64,39 @@ WaitVBlank:
 	call CopyTilemap
 
 	; Turn the LCD on
-	ld a, LCDCF_ON | LCDCF_BGON | LCDCF_BG8800
+	ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
 	ld [rLCDC], a
 
 	; During the first (blank) frame, initialize display registers
 	ld a, %11100100
 	ld [rBGP], a
 
+  ; Enable interrupt
+  ld a, %00000001
+  ld [rIE], a
+  ei
+
 Done:
 	jp Done
 
 SECTION "Functions", ROM0
+
+; At beginning of program, this is copied to $ff80 (available address for DMA)
+; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
+; It will load the hi-byte ($d0) of GBSpriteCache ($d000) into $ff46 to trigger the DMA.
+; It will then wait $28 (160) cycles for the DMA to complete.
+; (DMA automatically copies data from $d000 to)
+DMACopy:
+  push af
+    ld a, _RAM/256              ; get top byte of sprite buffer starting address
+    ld [rDMA], a                ; trigger DMA transfer
+    ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
+DMACopyWait:
+    dec a
+    jr nz, DMACopyWait          ; wait until DMA is complete
+  pop af
+  reti
+DMACopyEnd:
 
 CopyTiles:
 	ld a, [de]
@@ -76,6 +117,30 @@ CopyTilemap:
 	or a, c
 	jp nz, CopyTilemap
 	ret
+
+SetSprite:
+  push af
+    ; rotate A left, copy bit-7 to Carry and bit-0
+    rlca                  ; 4 bytes per sprite
+    rlca
+    push hl
+    push de
+      push hl
+        ld hl, _RAM       ; Cache to be copied via DMA
+        ld l, a           ; address for selected sprite
+        ld a, c           ; Y
+        ldi [hl], a
+        ld a, b           ; X
+        ldi [hl], a
+        ld a, e           ; tile
+        ldi [hl], a
+      pop hl
+      ld a, d             ; attributes
+      ldi [hl], a
+    pop de
+    pop hl
+  pop af
+  ret
 
 SECTION "Tile data", ROM0
 
