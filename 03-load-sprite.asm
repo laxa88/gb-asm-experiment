@@ -70,11 +70,33 @@ WaitVBlank:
 	; During the first (blank) frame, initialize display registers
 	ld a, %11100100
 	ld [rBGP], a
+  ld [rOBP0], a
+  cpl ; invert a
+  ld [rOBP1], a
 
   ; Enable interrupt
   ld a, %00000001
   ld [rIE], a
   ei
+
+  ; Set initial sprite
+  ld bc, $5830    ; xy
+  ld e, $8c       ; tile index
+  ld h, 0         ; tile details (palette, etc.)
+  ld a, 0         ; OBJ 0
+  call SetSprite  ; top left
+  ld bc, $6030
+  ld e, $8e
+  ld a, 1         ; OBJ 1
+  call SetSprite  ; top right
+  ld bc, $5838
+  ld e, $8d
+  ld a, 2         ; OBJ 2
+  call SetSprite  ; bottom left
+  ld bc, $6038
+  ld e, $8f
+  ld a, 3         ; OBJ 2
+  call SetSprite  ; bottom left
 
 Done:
 	jp Done
@@ -118,6 +140,12 @@ CopyTilemap:
 	jp nz, CopyTilemap
 	ret
 
+; Set sprite
+; - A = Sprite number (0 to 39)
+; - BC = X,Y
+; - E = Tile index from VRAM
+; - H = Palette, etc
+; - Note: On GB, XY needs to be 8,16 to get top-left corner of screen (?)
 SetSprite:
   push af
     ; rotate A left, copy bit-7 to Carry and bit-0
