@@ -80,9 +80,9 @@ WaitVBlank:
 
 	; init timer
 	xor a
-	ld (rTMA), a				; Reset timer by this much every clock
+	ld [rTMA], a				; Reset timer by this much every clock
 	ld a, TACF_4KHZ     ; 00, 11, 10, 01 (slowest to fastest)
-	ld (rTAC), a				; Timer control, b2 = start timer, b0/1 = clock speed
+	ld [rTAC], a				; Timer control, b2 = start timer, b0/1 = clock speed
 
   ; Enable interrupts
   ld a, IEF_VBLANK | IEF_TIMER
