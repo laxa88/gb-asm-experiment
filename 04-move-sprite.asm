@@ -19,7 +19,7 @@ SECTION "Header", ROM0[$100]
 	ds $134 - @, 0			; pad zero from @ (current address) to $134
 	db "My RGDBS game"
 
-SECTION "Game setup", ROM0[$150]
+SECTION "Game initialization", ROM0[$150]
 
 EntryPoint:
 	; Shut down audio circuitry
@@ -73,59 +73,111 @@ WaitVBlank:
 
 	; During the first (blank) frame, initialize display registers
 	ld a, %11100100
-	ld [rBGP], a
-  ld [rOBP0], a
+	ld [rBGP], a    ; bg palette
+  ld [rOBP0], a   ; obj 0 palette
   cpl ; invert a
-  ld [rOBP1], a
+  ld [rOBP1], a   ; obj 1 palette (usually inverted of obj 0)
 
 	; init timer
-	xor a
-	ld [rTMA], a				; Reset timer by this much every clock
-	ld a, TACF_4KHZ     ; 00, 11, 10, 01 (slowest to fastest)
-	ld [rTAC], a				; Timer control, b2 = start timer, b0/1 = clock speed
+	ld a, 0
+	ld [rTMA], a                    ; Reset timer by this much every clock
+	ld a, TACF_16KHZ | TACF_START   ; 00, 11, 10, 01 (slowest to fastest)
+	ld [rTAC], a                    ; Timer control, b2 = start timer, b0/1 = clock speed
 
   ; Enable interrupts
   ld a, IEF_VBLANK | IEF_TIMER
   ld [rIE], a
   ei
 
+; SECTION "Game setup", ROM0
+
   ; Set initial sprite
-  ld bc, $5830    ; xy
-  ld e, $8c       ; tile index
-  ld h, 0         ; tile details (palette, etc.)
-  ld a, 0         ; OBJ 0
-  call SetSprite  ; top left
-  ld bc, $6030
-  ld e, $8e
-  ld a, 1         ; OBJ 1
-  call SetSprite  ; top right
-  ld bc, $5838
-  ld e, $8d
-  ld a, 2         ; OBJ 2
-  call SetSprite  ; bottom left
-  ld bc, $6038
-  ld e, $8f
-  ld a, 3         ; OBJ 2
-  call SetSprite  ; bottom left
+  ld a, $58
+  ld [crosshairX], a
+  ld a, $30
+  ld [crosshairY], a
 
 Done:
+
+  call DrawCrosshair
+
 	jp Done
 
-SECTION "Functions", ROM0
+SECTION "Game variables", ROM0
+
+; Variable memory start backwards, in case it clases with DMA code
+DEF crosshairX EQU $cfff
+DEF crosshairY EQU $cffe
+
+SECTION "Game functions", ROM0
+
+DrawCrosshair:
+  push af
+  push bc
+    ld a, [crosshairX]
+    ld b, a
+    ld a, [crosshairY]
+    ld c, a
+    push bc
+      ld e, $8c       ; tile index
+      ld h, 0         ; tile details (palette, etc.)
+      ld a, 0         ; OBJ 0
+      call SetSprite  ; top left
+    pop bc
+    push bc
+      ld a, b
+      add 8
+      ld b, a
+      ld e, $8e
+      ld a, 1         ; OBJ 1
+      call SetSprite  ; top right
+    pop bc
+    push bc
+      ld a, c
+      add 8
+      ld c, a
+      ld e, $8d
+      ld a, 2         ; OBJ 2
+      call SetSprite  ; bottom left
+    pop bc
+    push bc
+      ld a, b
+      add 8
+      ld b, a
+      ld a, c
+      add 8
+      ld c, a
+      ld e, $8f
+      ld a, 3         ; OBJ 2
+      call SetSprite  ; bottom left
+    pop bc
+  pop bc
+  pop af
+  ret
+
+MoveCrosshair:
+  push af
+    ld a, [crosshairX]
+    inc a
+    ld [crosshairX], a
+  pop af
+  ret
+
+SECTION "Global functions", ROM0
 
 TimerInterrupt:
-	; TODO
+	call MoveCrosshair
 	reti
 
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
 ; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
-; It will load the hi-byte ($d0) of GBSpriteCache ($d000) into $ff46 to trigger the DMA.
+; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger the DMA.
 ; It will then wait $28 (160) cycles for the DMA to complete.
 ; (DMA automatically copies data from $d000 to)
 DMACopy:
   push af
-    ld a, _RAM/256              ; get top byte of sprite buffer starting address
-    ld [rDMA], a                ; trigger DMA transfer
+    ld a, _RAM/256              ; get top byte of sprite buffer starting address, i.e. $c0
+    ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
     ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
 DMACopyWait:
     dec a
