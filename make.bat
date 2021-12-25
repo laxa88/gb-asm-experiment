@@ -1,30 +1,14 @@
-echo ### starting GB build...
+@REM Silences the commands below
+@echo off
 
-@REM works!
-set input=main.asm
+set filename=05-input-move-sprite
+set toolpath=.\tools\rgbds-0.5.1-win32\
+set binpath=.\bin\
 
-@REM works!
-@REM set input=test.asm
-
-set output=game.gb
-
-echo %output%
-
-@REM Works
-@REM .\vasmz80_oldstyle_Win64\vasmz80_oldstyle.exe %input% -chklabels -nocase -gbz80 -Fbin -o .\bin\%output%
-
-@REM Works
-.\tools\vasm-z80-32.exe %input% -chklabels -nocase -gbz80 -Fbin -o .\bin\%output%
-
-if %errorlevel% neq 0 exit
-
-echo ### Applying RGBfix...
-
-.\tools\rgbds-0.5.1-win32\rgbfix.exe -v -p 0 .\bin\%output%
+echo ### Compiling file: %filename%
+%toolpath%rgbasm -L -o %binpath%%filename%.o %filename%.asm
+%toolpath%rgblink -o %binpath%%filename%.gb %binpath%%filename%.o
+%toolpath%rgbfix -v -p 0xFF %binpath%%filename%.gb
 
 echo ### Starting BGB...
-
-.\tools\bgb\bgb.exe .\bin\%output%
-exit
-
-
+.\tools\bgb\bgb.exe %binpath%%filename%.gb
