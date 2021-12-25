@@ -77,9 +77,9 @@ WaitVBlank:
   ld bc, TilesEnd - Tiles
   call CopyTiles
 
-  ld de, ChibiAkumaSheet
+  ld de, MySpriteSheet
   ld hl, $8800
-  ld bc, ChibiAkumaSheetEnd - ChibiAkumaSheet
+  ld bc, MySpriteSheetEnd - MySpriteSheet
   call CopyTiles
 
   ; Copy the tilemap
@@ -452,6 +452,6 @@ Tilemap:
   db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 TilemapEnd:
 
-ChibiAkumaSheet:
+MySpriteSheet:
   incbin "./sprite-sheet.bin"
-ChibiAkumaSheetEnd:
+MySpriteSheetEnd:
