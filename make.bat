@@ -8,6 +8,7 @@ set binpath=.\bin\
 echo ### Compiling file: %filename%
 %toolpath%rgbasm -L -o %binpath%%filename%.o %filename%.asm
 %toolpath%rgblink -o %binpath%%filename%.gb %binpath%%filename%.o
+%toolpath%rgblink -n %binpath%%filename%.sym %binpath%%filename%.o
 %toolpath%rgbfix -v -p 0xFF %binpath%%filename%.gb
 
 echo ### Starting BGB...
