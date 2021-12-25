@@ -1,19 +1,36 @@
 ; Use gbtd22 (Game Boy Tile Designer 2.2) to make custom spritesheet
 ; http://www.devrs.com/gb/hmgd/gbtd.html
 
-INCLUDE "hardware.inc"
-INCLUDE "util.asm"
+INCLUDE "include/hardware.inc"
+; INCLUDE "include/hUGEDriver.asm"
+; INCLUDE "pokemon_center.asm"
+INCLUDE "include/util.asm"
+
+SECTION "RST 0 - 7", ROM0[$00]
+  ds $40 - @, 0      ; pad zero from @ (current address)
 
 SECTION "VBlank interrupt", ROM0[$40]
+  jp _HRAM ; Vblank
+  ds $48 - @, 0
 
-  jp _HRAM
+SECTION "LCD-Stat interrupt", ROM0[$48]
+  reti
+  ds $50 - @, 0
 
 SECTION "Timer interrupt", ROM0[$50]
-
   jp TimerInterrupt
+  ds $58 - @, 0
+
+SECTION "Serial interrupt", ROM0[$58]
+  reti
+  ds $60 - @, 0
+
+SECTION "Joypad interrupt", ROM0[$60]
+  reti
+  ds $100 - @, 0
 
 SECTION "Header", ROM0[$100]
-
+  nop
   jp EntryPoint
 
   ds $134 - @, 0      ; pad zero from @ (current address) to $134
@@ -22,6 +39,10 @@ SECTION "Header", ROM0[$100]
 SECTION "Game initialization", ROM0[$150]
 
 EntryPoint:
+  nop                 ; No-op for safety!
+  di                  ; disable interrupt
+  ld sp, $ffff        ; set the stack pointer to highest mem location + 1
+
   ; Shut down audio circuitry
   xor a
   ld [rNR52], a
@@ -84,28 +105,54 @@ WaitVBlank:
   ld a, TACF_16KHZ | TACF_START   ; 00, 11, 10, 01 (slowest to fastest)
   ld [rTAC], a                    ; Timer control, b2 = start timer, b0/1 = clock speed
 
-  ; Enable interrupts
-  ld a, IEF_VBLANK | IEF_TIMER
-  ld [rIE], a
-  ei
-
-  ; Set initial sprite
+  ; Set initial sprite XY
   ld a, $58
   ld [crosshairX], a
   ld a, $30
   ld [crosshairY], a
 
+  ; Enable interrupts
+  xor a
+  ld [rIF], a
+  ld a, IEF_VBLANK | IEF_TIMER
+  ld [rIE], a
+  ei
+
+  ; Init sound
+  ld a, AUDENA_ON     ; enable sounds
+  ld [rAUDENA], a
+  ld a, $FF           ; turn on all speakers (stereo)
+  ld [rAUDTERM], a
+  ld a, $77           ; 0111 0111 (max volume for SO2 and SO1)
+  ld [rAUDVOL], a
+
+  ; Init music
+  ld hl, SONG_DESCRIPTOR
+  call hUGE_init
+
 Loop:
-  call ReadInput
-  call DrawCrosshair
-  jr Loop
+  push af
+  push hl
+  push bc
+  push de
+  call hUGE_dosound
+  pop de
+  pop bc
+  pop hl
+  pop af
+  ; call ReadInput
+  ; call DrawCrosshair
+  jp Loop
 
 SECTION "Game variables", ROM0
 
 ; Variable memory start backwards, in case it clases with DMA code
-DEF inputs EQU $cfff
-DEF crosshairX EQU $cffe
-DEF crosshairY EQU $cffd
+; DEF inputs EQU $cfff
+; DEF crosshairX EQU $cffe
+; DEF crosshairY EQU $cffd
+DEF inputs EQU $d000
+DEF crosshairX EQU $d001
+DEF crosshairY EQU $d002
 
 SECTION "Game functions", ROM0
 
@@ -138,8 +185,6 @@ ReadInput:
     or %11110000      ; ignore upper nibbles
     and b             ; merge with dpad nibble
     ld [inputs], a
-    ld a, P1F_GET_NONE
-    ld [rP1], a
   pop bc
   pop af
   ret
