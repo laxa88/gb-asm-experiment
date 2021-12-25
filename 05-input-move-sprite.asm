@@ -117,14 +117,12 @@ SECTION "Game functions", ROM0
 ReadInput:
   push af
   push bc
-    ; Reset all input states before checking every loop
-    xor a
-    ld [rP1], a
     ; Reference: https://gbdev.io/pandocs/Joypad_Input.html
     ; invert to 11101111 to select bit-4 (dpad)
-    ld a, ~P1F_4
+    ld a, P1F_GET_DPAD
     ld [rP1], a
     ld a, [rP1]       ; read values (Remember: 0 = selected!)
+    ld a, [rP1]
     or %11110000      ; pad hi-nibble first
     rlca
     rlca
@@ -132,13 +130,19 @@ ReadInput:
     rlca              ; store values to 7654 (dpad nibble)
     ld b, a           ; save to B
     ; invert to 11011111 to select bit-5 (buttons)
-    ld a, ~P1F_5
+    ld a, P1F_GET_BTN
+    ld [rP1], a
     ld a, [rP1]       ; read values (Remember: 0 = selected!)
+    ld a, [rP1]       ; Quirk: read a few more times to ensure previous read was flushed
+    ld a, [rP1]
     or %11110000      ; ignore upper nibbles
     and b             ; merge with dpad nibble
     ld [inputs], a
+    ld a, P1F_GET_NONE
+    ld [rP1], a
   pop bc
   pop af
+  ret
 
 DrawCrosshair:
   push af
