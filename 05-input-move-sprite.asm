@@ -147,13 +147,14 @@ ReadInput:
 DrawCrosshair:
   push af
   push bc
+  push de
     ld a, [crosshairX]
     ld b, a
     ld a, [crosshairY]
     ld c, a
     push bc
       ld e, $8c       ; tile index
-      ld h, 0         ; tile details (palette, etc.)
+      ld d, 0         ; tile details (palette, etc.)
       ld a, 0         ; OBJ 0
       call SetSprite  ; top left
     pop bc
@@ -184,6 +185,7 @@ DrawCrosshair:
       ld a, 3         ; OBJ 2
       call SetSprite  ; bottom left
     pop bc
+  pop de
   pop bc
   pop af
   ret
@@ -283,7 +285,7 @@ CopyTilemap:
 ; - A = Sprite number (0 to 39)
 ; - BC = X,Y
 ; - E = Tile index from VRAM
-; - H = Palette, etc
+; - D = Palette, etc
 ; - Note: On GB, XY needs to be 8,16 to get top-left corner of screen (?)
 SetSprite:
   push af
@@ -292,17 +294,15 @@ SetSprite:
     rlca
     push hl
     push de
-      push hl
-        ld hl, _RAM       ; Cache to be copied via DMA
-        ld l, a           ; address for selected sprite
-        ld a, c           ; Y
-        ldi [hl], a
-        ld a, b           ; X
-        ldi [hl], a
-        ld a, e           ; tile
-        ldi [hl], a
-      pop hl
-      ld a, d             ; attributes
+      ld hl, _RAM       ; Starting address of OAM cache to be copied via DMA
+      ld l, a           ; address for selected sprite
+      ld a, c           ; Y
+      ldi [hl], a
+      ld a, b           ; X
+      ldi [hl], a
+      ld a, e           ; tile index
+      ldi [hl], a
+      ld a, d           ; attributes
       ldi [hl], a
     pop de
     pop hl
