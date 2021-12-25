@@ -1,7 +1,7 @@
 @REM Silences the commands below
 @echo off
 
-set filename=03-load-sprite
+set filename=04-move-sprite
 set toolpath=.\tools\rgbds-0.5.1-win32\
 set binpath=.\bin\
 
