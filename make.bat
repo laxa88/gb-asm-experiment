@@ -1,7 +1,7 @@
 @REM Silences the commands below
 @echo off
 
-set filename=05-input-move-sprite
+set filename=06-bgm
 set musicname=quasar
 set toolpath=tools\rgbds-0.5.1-win32\
 set binpath=bin\
