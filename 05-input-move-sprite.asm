@@ -10,29 +10,24 @@ SECTION "RST 0 - 7", ROM0[$00]
 SECTION "VBlank interrupt", ROM0[$40]
   call PlayMusic
   jp _HRAM ; Vblank
-  ds $48 - @, 0
 
 SECTION "LCD-Stat interrupt", ROM0[$48]
   reti
-  ds $50 - @, 0
 
 SECTION "Timer interrupt", ROM0[$50]
-  jp TimerInterrupt
-  ds $58 - @, 0
+  reti
 
 SECTION "Serial interrupt", ROM0[$58]
   reti
-  ds $60 - @, 0
 
 SECTION "Joypad interrupt", ROM0[$60]
   reti
-  ds $100 - @, 0
 
 SECTION "Header", ROM0[$100]
   nop
   jp EntryPoint
 
-  ds $134 - @, 0      ; pad zero from @ (current address) to $134
+SECTION "Game title", ROM0[$134]
   db "My RGDBS game"
 
 SECTION "Game initialization", ROM0[$150]
