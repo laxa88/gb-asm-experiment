@@ -10,6 +10,7 @@ SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
 
 SECTION "VBlank interrupt", ROM0[$40]
+  call PlayMusic
   jp _HRAM ; Vblank
   ds $48 - @, 0
 
@@ -131,15 +132,6 @@ WaitVBlank:
   call hUGE_init
 
 Loop:
-  push af
-  push hl
-  push bc
-  push de
-  call hUGE_dosound
-  pop de
-  pop bc
-  pop hl
-  pop af
   ; call ReadInput
   ; call DrawCrosshair
   jp Loop
@@ -155,6 +147,18 @@ DEF crosshairX EQU $d001
 DEF crosshairY EQU $d002
 
 SECTION "Game functions", ROM0
+
+PlayMusic:
+  push af
+  push hl
+  push bc
+  push de
+  call hUGE_dosound
+  pop de
+  pop bc
+  pop hl
+  pop af
+  ret
 
 ; Reads inputs and puts them in register A, where:
 ; - hi-nibble is dpad (7654 = Down, Up, Left, Right)
