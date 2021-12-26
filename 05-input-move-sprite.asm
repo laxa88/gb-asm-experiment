@@ -8,7 +8,7 @@ SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
 
 SECTION "VBlank interrupt", ROM0[$40]
-  call PlayMusic
+  ; call PlayMusic
   jp _HRAM ; Vblank
 
 SECTION "LCD-Stat interrupt", ROM0[$48]
