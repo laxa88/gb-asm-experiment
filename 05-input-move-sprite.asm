@@ -8,7 +8,7 @@ SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
 
 SECTION "VBlank interrupt", ROM0[$40]
-  ; call PlayMusic
+  call PlayMusic
   jp _HRAM ; Vblank
 
 SECTION "LCD-Stat interrupt", ROM0[$48]
@@ -110,7 +110,7 @@ PlayMusic:
 ; (DMA automatically copies data from $d000 to)
 DMACopy:
   push af
-    ld a, _RAM/256              ; get top byte of sprite buffer starting address, i.e. $c0
+    ; ld a, _RAM/256              ; get top byte of sprite buffer starting address, i.e. $c0
     ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
     ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
 DMACopyWait:
