@@ -4,17 +4,22 @@
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
+; Reserved for OAM data
+DEF RAM_OAM EQU $c100       ; Reserve this address for OAM data
+DEF RAM_OAM_END EQU $c1a0   ; 40 sprites * 4 bytes = $a0 (60)
+
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
 
 SECTION "VBlank interrupt", ROM0[$40]
-  call PlayMusic
+  ; call PlayMusic
   jp _HRAM ; Vblank
 
 SECTION "LCD-Stat interrupt", ROM0[$48]
   reti
 
 SECTION "Timer interrupt", ROM0[$50]
+  call PlayMusic
   reti
 
 SECTION "Serial interrupt", ROM0[$58]
@@ -49,10 +54,10 @@ EntryPoint:
 
   ; clear OAM cache data
   xor a
-  ld [_RAM], a
-  ld hl, _RAM
-  ld de, _RAM + 1
-  ld bc, $a0 - 1              ; 159 loops (160 times)
+  ld [RAM_OAM], a
+  ld hl, RAM_OAM
+  ld de, RAM_OAM + 1
+  ld bc, RAM_OAM_END - RAM_OAM      ; 159 loops (160 times)
   z_ldir
 
   ; Do not turn the LCD off outside of VBlank
@@ -68,6 +73,11 @@ WaitVBlank:
   ; Turn the LCD on
   ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
   ld [rLCDC], a
+
+  ld a, 0
+  ld [rTMA], a                    ; Reset timer by this much every clock
+  ld a, TACF_16KHZ | TACF_START   ; 00, 11, 10, 01 (slowest to fastest)
+  ld [rTAC], a                    ; Timer control, b2 = start timer, b0/1 = clock speed
 
   ; Enable interrupts
   xor a
@@ -105,12 +115,14 @@ PlayMusic:
 
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
 ; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
-; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger the DMA.
+; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger
+; the DMA to copy data starting from $c000.
 ; It will then wait $28 (160) cycles for the DMA to complete.
-; (DMA automatically copies data from $d000 to)
+; NOTE: Since music is reserved starting from $c000, we'll reserve $c100 for our
+; OAM data instead.
 DMACopy:
   push af
-    ; ld a, _RAM/256              ; get top byte of sprite buffer starting address, i.e. $c0
+    ld a, RAM_OAM_END/256       ; get top byte of sprite buffer starting address, i.e. $c0
     ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
     ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
 DMACopyWait:
