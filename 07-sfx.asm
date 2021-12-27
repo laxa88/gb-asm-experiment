@@ -8,14 +8,14 @@ INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
 ; Reserved address for OAM data
-DEF RAM_OAM EQU $c100       ; Reserve this address for OAM data
-DEF RAM_OAM_END EQU $c1a0   ; 40 sprites * 4 bytes = $a0 (60)
+DEF rRAM_OAM EQU $c100        ; Reserve this address for OAM data
+DEF rRAM_OAM_END EQU $c1a0    ; 40 sprites * 4 bytes = $a0 (60)
 
 ; Local variable definitions
-DEF inputs EQU $cfff
-DEF crosshairX EQU $cffe
-DEF crosshairY EQU $cffd
-DEF canUpdate EQU $cffc
+DEF rInputs EQU $cfff
+DEF rCrosshairX EQU $cffe
+DEF rCrosshairY EQU $cffd
+DEF rCanUpdate EQU $cffc
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -62,10 +62,10 @@ EntryPoint:
 
   ; clear OAM cache data
   xor a
-  ld [RAM_OAM], a
-  ld hl, RAM_OAM
-  ld de, RAM_OAM + 1
-  ld bc, RAM_OAM_END - RAM_OAM      ; 159 loops (160 times)
+  ld [rRAM_OAM], a
+  ld hl, rRAM_OAM
+  ld de, rRAM_OAM + 1
+  ld bc, rRAM_OAM_END - rRAM_OAM      ; 159 loops (160 times)
   z_ldir
 
   ; Do not turn the LCD off outside of VBlank
@@ -121,9 +121,9 @@ WaitVBlank:
 
   ; Set initial sprite
   ld a, $58
-  ld [crosshairX], a
+  ld [rCrosshairX], a
   ld a, $30
-  ld [crosshairY], a
+  ld [rCrosshairY], a
 
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
@@ -139,11 +139,11 @@ WaitVBlank:
 
 Loop:
   halt                ; pause game (conserves CPU power) until next interrupt
-  ld a, [canUpdate]
+  ld a, [rCanUpdate]
   cp 1
-  jr nz, Loop         ; if interrupt was not vblank (resets canUpdate), jump back up and halt
+  jr nz, Loop         ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
   xor a
-  ld [canUpdate], a
+  ld [rCanUpdate], a
 
   call PlayMusic
   call ReadInput
@@ -158,7 +158,7 @@ SECTION "Global functions", ROM0
 VblankInterrupt:
   push af
     ld a, 1
-    ld [canUpdate], a
+    ld [rCanUpdate], a
   pop af
   jp _HRAM ; DMA function, ends with reti
 
@@ -189,14 +189,14 @@ ReadInput:
     ld a, [rP1]       ; read another time to stabilise input
     or %11110000      ; ignore upper nibble
     and b             ; merge with dpad nibble
-    ld [inputs], a
+    ld [rInputs], a
   pop bc
   pop af
   ret
 
 PlaySFX:
   push af
-    ld a, [inputs]
+    ld a, [rInputs]
     and %00000001   ; btn A
     cp %00000001
     jr z, .skip
@@ -218,34 +218,34 @@ MoveCrosshair:
   push bc
     ; Load XY pos
     push af
-      ld a, [crosshairX]
+      ld a, [rCrosshairX]
       ld b, a
-      ld a, [crosshairY]
+      ld a, [rCrosshairY]
       ld c, a
     pop af
 
     ; Update XY pos
     push af
 .checkRight
-      ld a, [inputs]
+      ld a, [rInputs]
       and %00010000
       cp %00010000
       jr z, .checkLeft
       inc b
 .checkLeft
-      ld a, [inputs]
+      ld a, [rInputs]
       and %00100000
       cp %00100000
       jr z, .checkUp
       dec b
 .checkUp
-      ld a, [inputs]
+      ld a, [rInputs]
       and %01000000
       cp %01000000
       jr z, .checkDown
       dec c
 .checkDown
-      ld a, [inputs]
+      ld a, [rInputs]
       and %10000000
       cp %10000000
       jr z, .done
@@ -255,9 +255,9 @@ MoveCrosshair:
     ; Save XY pos
     push af
       ld a, b
-      ld [crosshairX], a
+      ld [rCrosshairX], a
       ld a, c
-      ld [crosshairY], a
+      ld [rCrosshairY], a
     pop af
   pop bc
   ret
@@ -265,9 +265,9 @@ MoveCrosshair:
 DrawCrosshair:
   push af
   push bc
-    ld a, [crosshairX]
+    ld a, [rCrosshairX]
     ld b, a
-    ld a, [crosshairY]
+    ld a, [rCrosshairY]
     ld c, a
     push bc
       ld e, $8c       ; tile index
@@ -327,7 +327,7 @@ PlayMusic:
 ; OAM data instead.
 DMACopy:
   push af
-    ld a, RAM_OAM_END/256       ; get top byte of sprite buffer starting address, i.e. $c0
+    ld a, rRAM_OAM_END/256       ; get top byte of sprite buffer starting address, i.e. $c0
     ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
     ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
 DMACopyWait:
@@ -371,7 +371,7 @@ SetSprite:
     push hl
     push de
       push hl
-        ld hl, RAM_OAM    ; Cache to be copied via DMA
+        ld hl, rRAM_OAM    ; Cache to be copied via DMA
         ld l, a           ; address for selected sprite
         ld a, c           ; Y
         ldi [hl], a
