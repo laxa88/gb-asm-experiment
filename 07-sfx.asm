@@ -135,10 +135,10 @@ WaitVBlank:
   call hUGE_init
 
 Loop:
-  ; Run logic at Vblank rate, otherwise it's too fast
+  halt                ; pause game until next interrupt
   ld a, [canUpdate]
   cp 1
-  jr nz, Loop
+  jr nz, Loop         ; if interrupt was not vblank (resets canUpdate), jump back up and halt
   xor a
   ld [canUpdate], a
 
