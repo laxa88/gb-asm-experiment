@@ -1,7 +1,7 @@
 @REM Silences the commands below
 @echo off
 
-set filename=06-bgm
+set filename=07-sfx
 set musicname=pokemon_center
 set toolpath=tools\rgbds-0.5.1-win32\
 set binpath=bin\
