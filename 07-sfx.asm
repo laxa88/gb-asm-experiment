@@ -1,6 +1,9 @@
 ; Use gbtd22 (Game Boy Tile Designer 2.2) to make custom spritesheet
 ; http://www.devrs.com/gb/hmgd/gbtd.html
 
+; Using halt and interrupts to optimise CPU processing:
+; https://github.com/paulobruno/LearningGbAsm/tree/master/15_Interrupts
+
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
@@ -135,7 +138,7 @@ WaitVBlank:
   call hUGE_init
 
 Loop:
-  halt                ; pause game until next interrupt
+  halt                ; pause game (conserves CPU power) until next interrupt
   ld a, [canUpdate]
   cp 1
   jr nz, Loop         ; if interrupt was not vblank (resets canUpdate), jump back up and halt
