@@ -10,12 +10,14 @@ INCLUDE "include/util.asm"
 ; Reserved address for OAM data
 DEF rRAM_OAM EQU $c100        ; Reserve this address for OAM data
 DEF rRAM_OAM_END EQU $c1a0    ; 40 sprites * 4 bytes = $a0 (60)
+DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
 
 ; Local variable definitions
 DEF rInputs EQU $cfff
 DEF rCrosshairX EQU $cffe
 DEF rCrosshairY EQU $cffd
 DEF rCanUpdate EQU $cffc
+DEF rAnimCounter EQU $cffb
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -119,7 +121,9 @@ WaitVBlank:
   ld [rIE], a
   ei
 
-  ; Set initial sprite
+  ; Init variables
+  xor a
+  ld [rAnimCounter], a
   ld a, $58
   ld [rCrosshairX], a
   ld a, $30
@@ -159,6 +163,13 @@ VblankInterrupt:
   push af
     ld a, 1
     ld [rCanUpdate], a
+
+    ld a, [rAnimCounter]
+    cp 0
+    jr z, .skip
+    dec a
+    ld [rAnimCounter], a
+.skip
   pop af
   jp _HRAM ; DMA function, ends with reti
 
@@ -199,7 +210,16 @@ PlaySFX:
     ld a, [rInputs]
     and %00000001   ; btn A
     cp %00000001
-    jr z, .skip
+    jp z, .skip
+
+    ; reset play cooldown
+    ld a, [rAnimCounter]
+    cp 0
+    jp nz, .skip
+    ld a, ANIM_FPS
+    ld [rAnimCounter], a
+
+    ; play sound
     ld a, $15
     ld [rNR10], a
     ld a, $96
@@ -210,7 +230,7 @@ PlaySFX:
     ld [rNR13], a
     ld a, $85
     ld [rNR14], a
-.skip
+.skip:
   pop af
   ret
 
