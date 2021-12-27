@@ -189,10 +189,7 @@ ReadInput:
     ld [rP1], a
     ld a, [rP1]       ; read values (Remember: 0 = selected!)
     or %11110000      ; pad hi-nibble first
-    rlca
-    rlca
-    rlca
-    rlca              ; move values to bits-7654 (dpad nibble)
+    swap a            ; move values to bits-7654 (dpad nibble)
     ld b, a           ; save to B
     ld a, P1F_GET_BTN
     ld [rP1], a
