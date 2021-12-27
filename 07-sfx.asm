@@ -12,20 +12,19 @@ DEF RAM_OAM_END EQU $c1a0   ; 40 sprites * 4 bytes = $a0 (60)
 DEF inputs EQU $cfff
 DEF crosshairX EQU $cffe
 DEF crosshairY EQU $cffd
+DEF canUpdate EQU $cffc
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
   ; nop
 
 SECTION "VBlank interrupt", ROM0[$40]
-  jp _HRAM ; Vblank
+  call VblankInterrupt
 
 SECTION "LCD-Stat interrupt", ROM0[$48]
   reti
 
 SECTION "Timer interrupt", ROM0[$50]
-  call PlayMusic
-  call MoveCrosshair
   reti
 
 SECTION "Serial interrupt", ROM0[$58]
@@ -136,11 +135,28 @@ WaitVBlank:
   call hUGE_init
 
 Loop:
+  ; Run logic at Vblank rate, otherwise it's too fast
+  ld a, [canUpdate]
+  cp 1
+  jr nz, Loop
+  xor a
+  ld [canUpdate], a
+
+  call PlayMusic
   call ReadInput
+  call MoveCrosshair
   call DrawCrosshair
+
   jp Loop
 
 SECTION "Global functions", ROM0
+
+VblankInterrupt:
+  push af
+    ld a, 1
+    ld [canUpdate], a
+  pop af
+  jp _HRAM ; DMA function, ends with reti
 
 ; Reads inputs and puts them in register A, where:
 ; - hi-nibble is dpad (7654 = Down, Up, Left, Right)
@@ -271,7 +287,7 @@ PlayMusic:
   push hl
   push bc
   push de
-  call hUGE_dosound
+    call hUGE_dosound
   pop de
   pop bc
   pop hl
