@@ -144,6 +144,7 @@ Loop:
 
   call PlayMusic
   call ReadInput
+  call PlaySFX
   call MoveCrosshair
   call DrawCrosshair
 
@@ -187,6 +188,26 @@ ReadInput:
     and b             ; merge with dpad nibble
     ld [inputs], a
   pop bc
+  pop af
+  ret
+
+PlaySFX:
+  push af
+    ld a, [inputs]
+    and %00000001   ; btn A
+    cp %00000001
+    jr z, .skip
+    ld a, $15
+    ld [rNR10], a
+    ld a, $96
+    ld [rNR11], a
+    ld a, $73
+    ld [rNR12], a
+    ld a, $BB
+    ld [rNR13], a
+    ld a, $85
+    ld [rNR14], a
+.skip
   pop af
   ret
 
