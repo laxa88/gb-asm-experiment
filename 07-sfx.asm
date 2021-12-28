@@ -165,7 +165,7 @@ VblankInterrupt:
     ld [rCanUpdate], a
 
     ld a, [rAnimCounter]
-    cp 0
+    or a
     jr z, .skip
     dec a
     ld [rAnimCounter], a
@@ -211,7 +211,7 @@ PlaySFX:
 
     ; reset play cooldown
     ld a, [rAnimCounter]
-    cp 0
+    or a
     jp nz, .skip
     ld a, ANIM_FPS
     ld [rAnimCounter], a
