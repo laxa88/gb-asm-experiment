@@ -7,15 +7,23 @@
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
-; Reserved address for OAM data
+; Constants
+
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
 
-; Local variable definitions
-DEF rInputs EQU $cfff
-DEF rCrosshairX EQU $cffe
-DEF rCrosshairY EQU $cffd
-DEF rCanUpdate EQU $cffc
-DEF rAnimCounter EQU $cffb
+SECTION "OAM RAM data", WRAM0
+
+; These addresses will be dynamically allocated sequentially
+; within appropriate section (i.e. WRAM0) when linking
+
+rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
+
+; Local variables
+rInputs: dw
+rCrosshairX: dw
+rCrosshairY: dw
+rCanUpdate: dw
+rAnimCounter: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -503,7 +511,3 @@ TilemapEnd:
 MySpriteSheet:
   incbin "./sprite-sheet.bin"
 MySpriteSheetEnd:
-
-SECTION "OAM RAM data", WRAM0
-
-rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
