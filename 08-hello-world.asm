@@ -28,6 +28,9 @@ rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 
 ; Local variables
 rInputs: dw
+rInputsPrev: dw
+rInputsPressed: dw
+rInputsReleased: dw
 rCrosshairX: dw
 rCrosshairY: dw
 rCanUpdate: dw
@@ -198,9 +201,14 @@ VblankInterrupt:
 ReadInput:
   push af
   push bc
-    ; Reset all input states before checking every loop
+    ; Save previous inputs
+    ld a, [rInputs]
+    ld c, a               ; Save this for pressed/released logic below
+    ld [rInputsPrev], a
+
+    ; Read new inputs
     xor a
-    ld [rP1], a
+    ld [rP1], a       ; Reset all input states before checking every loop
     ; Reference: https://gbdev.io/pandocs/Joypad_Input.html
     ld a, P1F_GET_DPAD
     ld [rP1], a
@@ -215,14 +223,24 @@ ReadInput:
     or %11110000      ; ignore upper nibble
     and b             ; merge with dpad nibble
     cpl               ; invert A such that 1 = selected
-    ld [rInputs], a
+    ld [rInputs], a   ; save latest inputs
+
+    ; Save pressed/released states
+    xor c
+    ld b, a                 ; XOR old and new inputs to get all changed bits, save to B
+    ld a, [rInputs]
+    and b
+    ld [rInputsPressed], a  ; AND only new inputs as "pressed"
+    ld a, [rInputsPrev]
+    and b
+    ld [rInputsReleased], a ; AND only old inputs as "released"
   pop bc
   pop af
   ret
 
 SwitchMusic:
   push af
-    ld a, [rInputs]
+    ld a, [rInputsPressed]
     and INPUT_BTN_B
     jp z, .end
 
@@ -250,16 +268,9 @@ SwitchMusic:
 
 PlaySFX:
   push af
-    ld a, [rInputs]
+    ld a, [rInputsPressed]
     and INPUT_BTN_A
     jp z, .skip
-
-    ; reset play cooldown
-    ld a, [rAnimCounter]
-    or a
-    jp nz, .skip
-    ld a, ANIM_FPS
-    ld [rAnimCounter], a
 
     ; play sound
     ld a, $15
