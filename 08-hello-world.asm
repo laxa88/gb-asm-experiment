@@ -24,6 +24,7 @@ rCrosshairX: dw
 rCrosshairY: dw
 rCanUpdate: dw
 rAnimCounter: dw
+rMusicId: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -130,6 +131,7 @@ WaitVBlank:
   ; Init variables
   xor a
   ld [rAnimCounter], a
+  ld [rMusicId], a
   ld a, $58
   ld [rCrosshairX], a
   ld a, $30
@@ -144,7 +146,7 @@ WaitVBlank:
   ld [rAUDVOL], a
 
   ; Init music
-  ld hl, SONG_DESCRIPTOR
+  ld hl, quasar
   call hUGE_init
 
 Loop:
@@ -157,6 +159,7 @@ Loop:
 
   call PlayMusic
   call ReadInput
+  call SwitchMusic
   call PlaySFX
   call MoveCrosshair
   call DrawCrosshair
@@ -205,6 +208,35 @@ ReadInput:
     and b             ; merge with dpad nibble
     ld [rInputs], a
   pop bc
+  pop af
+  ret
+
+SwitchMusic:
+  push af
+    ld a, [rInputs]
+    and %00000010
+    cp %00000010
+    jp z, .end
+
+    ; Check BGM toggle
+    ld a, [rMusicId]
+    cp 1
+    jr z, .toggleQuasar
+    cp 0
+    jr z, .togglePkmn
+    jp .end
+.togglePkmn:
+    ld hl, pokemon_center
+    call hUGE_init
+    ld a, 1
+    ld [rMusicId], a
+    jp .end
+.toggleQuasar:
+    ld hl, quasar
+    call hUGE_init
+    ld a, 0
+    ld [rMusicId], a
+.end:
   pop af
   ret
 

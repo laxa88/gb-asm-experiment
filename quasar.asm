@@ -1,6 +1,6 @@
 include "include/hUGE.inc"
 
-SECTION "Song Data", ROMX
+SECTION "Song Data 2", ROMX
 
 quasar::
 db 7
