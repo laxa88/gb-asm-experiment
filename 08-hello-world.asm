@@ -10,6 +10,14 @@ INCLUDE "include/util.asm"
 ; Constants
 
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
+DEF INPUT_BTN_A       EQU %00000001
+DEF INPUT_BTN_B       EQU %00000010
+DEF INPUT_BTN_SELECT  EQU %00000100
+DEF INPUT_BTN_START   EQU %00001000
+DEF INPUT_DPAD_RIGHT  EQU %00010000
+DEF INPUT_DPAD_LEFT   EQU %00100000
+DEF INPUT_DPAD_UP     EQU %01000000
+DEF INPUT_DPAD_DOWN   EQU %10000000
 
 SECTION "OAM RAM data", WRAM0
 
@@ -206,6 +214,7 @@ ReadInput:
     ld a, [rP1]       ; read another time to stabilise input
     or %11110000      ; ignore upper nibble
     and b             ; merge with dpad nibble
+    cpl               ; invert A such that 1 = selected
     ld [rInputs], a
   pop bc
   pop af
@@ -214,8 +223,7 @@ ReadInput:
 SwitchMusic:
   push af
     ld a, [rInputs]
-    and %00000010
-    cp %00000010
+    and INPUT_BTN_B
     jp z, .end
 
     ; Check BGM toggle
@@ -243,8 +251,7 @@ SwitchMusic:
 PlaySFX:
   push af
     ld a, [rInputs]
-    and %00000001   ; btn A
-    cp %00000001
+    and INPUT_BTN_A
     jp z, .skip
 
     ; reset play cooldown
@@ -283,26 +290,22 @@ MoveCrosshair:
     push af
 .checkRight
       ld a, [rInputs]
-      and %00010000
-      cp %00010000
+      and INPUT_DPAD_RIGHT
       jr z, .checkLeft
       inc b
 .checkLeft
       ld a, [rInputs]
-      and %00100000
-      cp %00100000
+      and INPUT_DPAD_LEFT
       jr z, .checkUp
       dec b
 .checkUp
       ld a, [rInputs]
-      and %01000000
-      cp %01000000
+      and INPUT_DPAD_UP
       jr z, .checkDown
       dec c
 .checkDown
       ld a, [rInputs]
-      and %10000000
-      cp %10000000
+      and INPUT_DPAD_DOWN
       jr z, .done
       inc c
 .done
