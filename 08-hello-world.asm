@@ -555,5 +555,5 @@ Tilemap:
 TilemapEnd:
 
 MySpriteSheet:
-  incbin "./sprite-sheet.bin"
+  incbin "./resource/sprite-sheet.bin"
 MySpriteSheetEnd:

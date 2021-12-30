@@ -6,14 +6,15 @@ set musicname1=pokemon_center
 set musicname2=quasar
 set toolpath=tools\rgbds-0.5.1-win32\
 set binpath=bin\
+set resourcepath=resource\
 
 echo ### Compiling files: %filename%
 @REM https://rgbds.gbdev.io/docs/master/rgbasm.1
 @REM Assemble code into .obj files
 %toolpath%rgbasm -o %binpath%hUGEDriver.obj -i .. include/hUGEDriver.asm
 if ERRORLEVEL 1 exit
-%toolpath%rgbasm -o %binpath%%musicname1%.obj -i .. %musicname1%.asm
-%toolpath%rgbasm -o %binpath%%musicname2%.obj -i .. %musicname2%.asm
+%toolpath%rgbasm -o %binpath%%musicname1%.obj -i .. %resourcepath%%musicname1%.asm
+%toolpath%rgbasm -o %binpath%%musicname2%.obj -i .. %resourcepath%%musicname2%.asm
 if ERRORLEVEL 1 exit
 %toolpath%rgbasm -o %binpath%%filename%.obj %filename%.asm
 if ERRORLEVEL 1 exit
