@@ -14,3 +14,7 @@ This project is developed using Visual Studio Code on a Windows machine.
 ### Build
 
 Run `make.bat`, which should build and open the `.gb` game in BGB emulator.
+
+### Notes
+
+Open `.gbr` files with [GameBoy Tile Designer](http://www.devrs.com/gb/hmgd/gbtd.html)
