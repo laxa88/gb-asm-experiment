@@ -7,6 +7,35 @@
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
+; My tileset doesn't differentiate between small and large letters,
+; so map the small letters as large letters.
+CHARMAP "a", "A"
+CHARMAP "b", "B"
+CHARMAP "c", "C"
+CHARMAP "d", "D"
+CHARMAP "e", "E"
+CHARMAP "f", "F"
+CHARMAP "g", "G"
+CHARMAP "h", "H"
+CHARMAP "i", "I"
+CHARMAP "j", "J"
+CHARMAP "k", "K"
+CHARMAP "l", "L"
+CHARMAP "m", "M"
+CHARMAP "n", "N"
+CHARMAP "o", "O"
+CHARMAP "p", "P"
+CHARMAP "q", "Q"
+CHARMAP "r", "R"
+CHARMAP "s", "S"
+CHARMAP "t", "T"
+CHARMAP "u", "U"
+CHARMAP "v", "V"
+CHARMAP "w", "W"
+CHARMAP "x", "X"
+CHARMAP "y", "Y"
+CHARMAP "z", "Z"
+
 ; Constants
 
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
@@ -36,6 +65,8 @@ rCrosshairY: dw
 rCanUpdate: dw
 rAnimCounter: dw
 rMusicId: dw
+rCharX: dw
+rCharY: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -143,6 +174,7 @@ WaitVBlank:
   xor a
   ld [rAnimCounter], a
   ld [rMusicId], a
+
   ld a, $58
   ld [rCrosshairX], a
   ld a, $30
@@ -153,7 +185,7 @@ WaitVBlank:
   ld [rAUDENA], a
   ld a, $FF           ; turn on all speakers (stereo)
   ld [rAUDTERM], a
-  ld a, $77           ; 0111 0111 (max volume for SO2 and SO1)
+  ld a, %00000000     ; 0111 0111 (max volume for SO2 and SO1)
   ld [rAUDVOL], a
 
   ; Init music
@@ -175,6 +207,12 @@ Loop:
   call MoveCrosshair
   call DrawCrosshair
 
+  xor a
+  ld [rCharX], a
+  ld [rCharY], a
+  ld hl, Message
+  call DrawString
+
   jp Loop
 
 SECTION "Global functions", ROM0
@@ -192,6 +230,76 @@ VblankInterrupt:
 .skip
   pop af
   jp _HRAM ; DMA function, ends with reti
+
+; HL = address of the text to be printed
+; rCharX / rCharY = address of XY values
+; Print a chars until we see a newline or EOL char
+; For now, EOL = 255, newline = ???
+DrawString:
+  ld a, [hl]
+  cp 255
+  ret z           ; return if found EOL char
+  inc hl
+  call DrawChar
+  jr DrawString
+
+; A = value of string's char at current [HL] address
+DrawChar:
+  ; get index offset (XY from tilemap start address $9800)
+  ; print char
+  push hl
+  push bc
+    push af
+      ld a, [rCharY]
+      ld b, a             ; YYYYYYYY --------
+      ld a, [rCharX]
+      ld c, a             ; -------- XXXXXXXX
+      ld hl, rCharX
+      inc [hl]
+      cp 20-1             ; screen width is 20 tiles
+      call z, NewLine     ; move to newline if X-tile is over 20 tiles
+      ; move B right and into Carry
+      ; move Carry right to A
+      xor a
+      rr b                ; -YYYYYYY
+      rra                 ;          Y-------
+      rr b                ; --YYYYYY
+      rra                 ;          YY------
+      rr b                ; ---YYYYY
+      rra                 ;          YYY-----
+      or c                ;          YYYXXXXX
+      ld c, a       ; BC =  ---YYYYY YYYXXXXX
+      ld hl, $9800
+      add hl, bc          ; $9800 + BC (offset of char tile)
+    pop af
+
+    push af
+      ; sub 32
+      add 96
+      call LCDWait
+      ld [hl], a
+    pop af
+  pop bc
+  pop hl
+  ret
+
+LCDWait:
+  push af
+.loop:
+    ld a, [rSTAT]     ; check LCD status
+    and %00000010
+    jr nz, .loop
+  pop af
+  ret
+
+NewLine:
+  push hl
+    ld hl, rCharY ; Move to next tile row
+    inc [hl]
+    ld hl, rCharX ; Reset tile column
+    ld [hl], 0
+  pop hl
+  ret
 
 ; Reads inputs and puts them in register A, where:
 ; - hi-nibble is dpad (7654 = Down, Up, Left, Right)
@@ -339,7 +447,7 @@ DrawCrosshair:
     ld a, [rCrosshairY]
     ld c, a
     push bc
-      ld e, $8c       ; tile index
+      ld e, $fc       ; tile index
       ld h, 0         ; tile details (palette, etc.)
       ld a, 0         ; OBJ 0
       call SetSprite  ; top left
@@ -348,7 +456,7 @@ DrawCrosshair:
       ld a, b
       add 8
       ld b, a
-      ld e, $8e
+      ld e, $fe
       ld a, 1         ; OBJ 1
       call SetSprite  ; top right
     pop bc
@@ -356,7 +464,7 @@ DrawCrosshair:
       ld a, c
       add 8
       ld c, a
-      ld e, $8d
+      ld e, $fd
       ld a, 2         ; OBJ 2
       call SetSprite  ; bottom left
     pop bc
@@ -367,7 +475,7 @@ DrawCrosshair:
       ld a, c
       add 8
       ld c, a
-      ld e, $8f
+      ld e, $ff
       ld a, 3         ; OBJ 2
       call SetSprite  ; bottom left
     pop bc
@@ -456,7 +564,7 @@ SetSprite:
   pop af
   ret
 
-SECTION "Tile data", ROM0
+SECTION "Binary data", ROM0
 
 Tiles:
   db $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff
@@ -557,3 +665,5 @@ TilemapEnd:
 MySpriteSheet:
   incbin "./resource/sprite-sheet.bin"
 MySpriteSheetEnd:
+
+Message: db "Hello world 123!", 255
