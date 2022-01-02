@@ -175,10 +175,18 @@ WaitVBlank:
   ld [rAnimCounter], a
   ld [rMusicId], a
 
+  ; Init crosshair image position
   ld a, $58
   ld [rCrosshairX], a
   ld a, $30
   ld [rCrosshairY], a
+
+  ; Print hello world only once
+  xor a
+  ld [rCharX], a
+  ld [rCharY], a
+  ld hl, Message
+  call DrawString
 
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
@@ -206,12 +214,6 @@ Loop:
   call PlaySFX
   call MoveCrosshair
   call DrawCrosshair
-
-  xor a
-  ld [rCharX], a
-  ld [rCharY], a
-  ld hl, Message
-  call DrawString
 
   jp Loop
 
