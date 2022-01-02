@@ -1,6 +1,6 @@
 include "include/hUGE.inc"
 
-SECTION "Song Data", ROMX
+SECTION "Song Data 1", ROMX
 
 pokemon_center::
 db 7

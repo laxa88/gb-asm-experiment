@@ -7,17 +7,23 @@
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
 
-; Reserved address for OAM data
-DEF rRAM_OAM EQU $c100        ; Reserve this address for OAM data
-DEF rRAM_OAM_END EQU $c1a0    ; 40 sprites * 4 bytes = $a0 (60)
+; Constants
+
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
 
-; Local variable definitions
-DEF rInputs EQU $cfff
-DEF rCrosshairX EQU $cffe
-DEF rCrosshairY EQU $cffd
-DEF rCanUpdate EQU $cffc
-DEF rAnimCounter EQU $cffb
+SECTION "OAM RAM data", WRAM0
+
+; These addresses will be dynamically allocated sequentially
+; within appropriate section (i.e. WRAM0) when linking
+
+rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
+
+; Local variables
+rInputs: dw
+rCrosshairX: dw
+rCrosshairY: dw
+rCanUpdate: dw
+rAnimCounter: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address)
@@ -67,7 +73,7 @@ EntryPoint:
   ld [rRAM_OAM], a
   ld hl, rRAM_OAM
   ld de, rRAM_OAM + 1
-  ld bc, rRAM_OAM_END - rRAM_OAM      ; 159 loops (160 times)
+  ld bc, $a0 - 1      ; 159 loops (160 times)
   z_ldir
 
   ; Do not turn the LCD off outside of VBlank
@@ -165,7 +171,7 @@ VblankInterrupt:
     ld [rCanUpdate], a
 
     ld a, [rAnimCounter]
-    cp 0
+    or a
     jr z, .skip
     dec a
     ld [rAnimCounter], a
@@ -211,7 +217,7 @@ PlaySFX:
 
     ; reset play cooldown
     ld a, [rAnimCounter]
-    cp 0
+    or a
     jp nz, .skip
     ld a, ANIM_FPS
     ld [rAnimCounter], a
@@ -344,7 +350,7 @@ PlayMusic:
 ; OAM data instead.
 DMACopy:
   push af
-    ld a, rRAM_OAM_END/256       ; get top byte of sprite buffer starting address, i.e. $c0
+    ld a, rRAM_OAM/256          ; get top byte of sprite buffer starting address, i.e. $c0
     ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
     ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
 DMACopyWait:
@@ -388,7 +394,7 @@ SetSprite:
     push hl
     push de
       push hl
-        ld hl, rRAM_OAM    ; Cache to be copied via DMA
+        ld hl, rRAM_OAM   ; Cache to be copied via DMA
         ld l, a           ; address for selected sprite
         ld a, c           ; Y
         ldi [hl], a
