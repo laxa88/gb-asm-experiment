@@ -210,10 +210,11 @@ Loop:
   ld [rCanUpdate], a
 
   call UpdateRandomNumber
-  call DrawRandNum
+  call DrawRandNumber
   call PlayMusic
   call ReadInput
   call SwitchMusic
+  call ReadRandomNumber
   call PlaySFX
   call MoveCrosshair
   call DrawCrosshair
@@ -421,6 +422,20 @@ ReadInput:
   pop af
   ret
 
+ReadRandomNumber:
+  push af
+    ld a, [rInputsPressed]
+    and INPUT_BTN_START
+    jp z, .end
+
+    ld a, [rRandNum]
+    ld d, 17              ; Y tile pos
+    ld e, 3               ; X tile pos
+    call Draw2Decimals
+.end
+  pop af
+  ret
+
 SwitchMusic:
   push af
     ld a, [rInputsPressed]
@@ -558,7 +573,7 @@ DrawCrosshair:
   pop af
   ret
 
-DrawRandNum:
+DrawRandNumber:
   ld a, [rRandNum]      ; 0 ~ 99
   ld d, 17              ; Y tile pos
   ld e, 0               ; X tile pos
