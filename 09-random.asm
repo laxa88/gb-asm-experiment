@@ -67,6 +67,7 @@ rAnimCounter: dw
 rMusicId: dw
 rCharX: dw
 rCharY: dw
+rRandNum: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address) to $40 (vblank interrupt)
@@ -182,6 +183,7 @@ WaitVBlank:
 
   ; Print hello world only once
   xor a
+  ld [rRandNum], a
   ld [rCharX], a
   ld [rCharY], a
   ld hl, Message
@@ -207,6 +209,8 @@ Loop:
   xor a
   ld [rCanUpdate], a
 
+  call UpdateRandomNumber
+  call DrawRandNum
   call PlayMusic
   call ReadInput
   call SwitchMusic
@@ -231,6 +235,19 @@ VblankInterrupt:
 .skip
   pop af
   jp _HRAM ; DMA function, ends with reti
+
+UpdateRandomNumber:
+  ; There is no "random" number in ASM, so we "generate"
+  ; a pseudo-random number by incrementing rRandNum every
+  ; update. The randomness comes from "when" the player
+  ; reads this value.
+  push af
+    ld a, [rRandNum]
+    inc a
+    daa   ; converts hex to decimal, e.g. $1a becomes $26
+    ld [rRandNum], a
+  pop af
+  reti
 
 ; Draws a string of text:
 ; - HL = address of the text to be printed
@@ -279,12 +296,68 @@ DrawChar:
     push af
       add 96              ; offset (refer to VRAM for tile position)
       call LCDWait
-      ld [hl], a
+      ld [hl], a          ; assign tile index to tilemap XY position
     pop af
   pop bc
   pop hl
   ret
 
+; Draws 2-digit decimals:
+; - DE = YX position
+; - A = 2-digit decimals ($00 - $99)
+Draw2Decimals:
+  push af
+  push bc
+  push de
+    ; temp store A
+    ld c, a
+
+    ; Print left number
+    and %11110000
+    swap a
+    call DrawDigit
+
+    ; Print right number
+    inc e       ; X + 1
+    ld a, c
+    and %00001111
+    call DrawDigit
+  pop de
+  pop bc
+  pop af
+  ret
+
+; Draw digit:
+; - DE = XY position
+; - A = decimal digit to print (0 to 9)
+DrawDigit:
+  push hl
+  push de
+    push af
+      ; Get tilemap position ($9800 = tilemap 0)
+      xor a
+      rr d                ; -YYYYYYY
+      rra                 ;          Y-------
+      rr d                ; --YYYYYY
+      rra                 ;          YY------
+      rr d                ; ---YYYYY
+      rra                 ;          YYY-----
+      or e                ;          YYYXXXXX
+      ld e, a       ; DE =  ---YYYYY YYYXXXXX
+      ld hl, $9800
+      add hl, de
+    pop af
+
+    push af
+      add 144           ; Offset to "0" digit image
+      call LCDWait
+      ld [hl], a        ; assign tile index to tilemap XY position
+    pop af
+  pop de
+  pop hl
+  ret
+
+; Wait until LCD is safe to draw on
 LCDWait:
   push af
 .loop:
@@ -483,6 +556,13 @@ DrawCrosshair:
     pop bc
   pop bc
   pop af
+  ret
+
+DrawRandNum:
+  ld a, [rRandNum]      ; 0 ~ 99
+  ld d, 17              ; Y tile pos
+  ld e, 0               ; X tile pos
+  call Draw2Decimals
   ret
 
 PlayMusic:
