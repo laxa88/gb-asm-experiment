@@ -69,8 +69,7 @@ rCharX: dw
 rCharY: dw
 
 SECTION "RST 0 - 7", ROM0[$00]
-  ds $40 - @, 0      ; pad zero from @ (current address)
-  ; nop
+  ds $40 - @, 0      ; pad zero from @ (current address) to $40 (vblank interrupt)
 
 SECTION "VBlank interrupt", ROM0[$40]
   call VblankInterrupt
@@ -233,10 +232,11 @@ VblankInterrupt:
   pop af
   jp _HRAM ; DMA function, ends with reti
 
-; HL = address of the text to be printed
-; rCharX / rCharY = address of XY values
-; Print a chars until we see a newline or EOL char
-; For now, EOL = 255, newline = ???
+; Draws a string of text:
+; - HL = address of the text to be printed
+; - rCharX / rCharY = address of XY values
+; - Print a chars until we see a newline or EOL char
+; - For now, EOL = 255, newline = ???
 DrawString:
   ld a, [hl]
   cp 255
@@ -245,7 +245,8 @@ DrawString:
   call DrawChar
   jr DrawString
 
-; A = value of string's char at current [HL] address
+; Draws character at position rCharX / rCharY:
+; - A = value of string's char at current [HL] address
 DrawChar:
   ; get index offset (XY from tilemap start address $9800)
   ; print char
@@ -276,8 +277,7 @@ DrawChar:
     pop af
 
     push af
-      ; sub 32
-      add 96
+      add 96              ; offset (refer to VRAM for tile position)
       call LCDWait
       ld [hl], a
     pop af
