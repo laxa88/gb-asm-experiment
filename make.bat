@@ -1,7 +1,7 @@
 @REM Silences the commands below
 @echo off
 
-set filename=08-hello-world
+set filename=09-random
 set musicname1=pokemon_center
 set musicname2=quasar
 set toolpath=tools\rgbds-0.5.1-win32\
