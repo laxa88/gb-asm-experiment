@@ -208,11 +208,11 @@ WaitVBlank:
   ld hl, quasar
   call hUGE_init
 
-Loop:
+GameLoop:
   halt                ; pause game (conserves CPU power) until next interrupt
   ld a, [rCanUpdate]
   cp 1
-  jr nz, Loop         ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
+  jr nz, GameLoop         ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
   xor a
   ld [rCanUpdate], a
 
@@ -238,33 +238,33 @@ UpdateTitleScreen:
   draw_text StrMenu3, 3, 14
   ld a, STATE_TITLE_FADE_IN
   ld [rScreenState], a
-  jp Loop
+  jp GameLoop
 .fadein:
-  jp Loop
+  jp GameLoop
 .update:
-  jp Loop
+  jp GameLoop
 .fadeout:
-  jp Loop
+  jp GameLoop
 
 UpdateGameScreen:
 .fadein:
-  jp Loop
+  jp GameLoop
 .update:
-  jp Loop
+  jp GameLoop
 .fadeout:
-  jp Loop
+  jp GameLoop
 .init:
-  jp Loop
+  jp GameLoop
 
 UpdateGameOverScreen:
 .fadein:
-  jp Loop
+  jp GameLoop
 .update:
-  jp Loop
+  jp GameLoop
 .fadeout:
-  jp Loop
+  jp GameLoop
 .init:
-  jp Loop
+  jp GameLoop
 
 SECTION "Global functions", ROM0
 
