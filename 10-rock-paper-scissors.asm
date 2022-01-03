@@ -299,16 +299,30 @@ UpdateRandomNumber:
 
 ; Draws a string of text:
 ; - HL = address of the text to be printed
+; - DE = YX position
 ; - rCharX / rCharY = address of XY values
 ; - Print a chars until we see a newline or EOL char
-; - For now, EOL = 255, newline = ???
+; - For now, EOL = 255, newline = 10 (LF, aka \n)
 DrawString:
+  ld a, [rCharY]
+  ld d, a
+  ld a, [rCharX]
+  ld e, a
+.loop:
   ld a, [hl]
-  cp 255
-  ret z           ; return if found EOL char
+  cp 255            ; return if EOL char
+  ret z
+  cp 10             ; move to next line if LF char
+  jr nz, .draw
+  inc hl
+  inc e
+  call NewLine
+  jr .loop
+.draw:
   inc hl
   call DrawChar
-  jr DrawString
+  inc e             ; move to next character
+  jr .loop
 
 ; Draws character at position rCharX / rCharY:
 ; - A = value of string's char at current [HL] address
@@ -316,73 +330,8 @@ DrawChar:
   ; get index offset (XY from tilemap start address $9800)
   ; print char
   push hl
-  push bc
-    push af
-      ld a, [rCharY]
-      ld b, a             ; YYYYYYYY --------
-      ld a, [rCharX]
-      ld c, a             ; -------- XXXXXXXX
-      ld hl, rCharX
-      inc [hl]
-      cp 20-1             ; screen width is 20 tiles
-      call z, NewLine     ; move to newline if X-tile is over 20 tiles
-      ; move B right and into Carry
-      ; move Carry right to A
-      xor a
-      rr b                ; -YYYYYYY
-      rra                 ;          Y-------
-      rr b                ; --YYYYYY
-      rra                 ;          YY------
-      rr b                ; ---YYYYY
-      rra                 ;          YYY-----
-      or c                ;          YYYXXXXX
-      ld c, a       ; BC =  ---YYYYY YYYXXXXX
-      ld hl, $9800
-      add hl, bc          ; $9800 + BC (offset of char tile)
-    pop af
-
-    push af
-      add 96              ; offset (refer to VRAM for tile position)
-      call LCDWait
-      ld [hl], a          ; assign tile index to tilemap XY position
-    pop af
-  pop bc
-  pop hl
-  ret
-
-; Draws 2-digit decimals:
-; - DE = YX position
-; - A = 2-digit decimals ($00 - $99)
-Draw2Decimals:
-  push af
-  push bc
-  push de
-    ; temp store A
-    ld c, a
-
-    ; Print left number
-    and %11110000
-    swap a
-    call DrawDigit
-
-    ; Print right number
-    inc e       ; X + 1
-    ld a, c
-    and %00001111
-    call DrawDigit
-  pop de
-  pop bc
-  pop af
-  ret
-
-; Draw digit:
-; - DE = XY position
-; - A = decimal digit to print (0 to 9)
-DrawDigit:
-  push hl
   push de
     push af
-      ; Get tilemap position ($9800 = tilemap 0)
       xor a
       rr d                ; -YYYYYYY
       rra                 ;          Y-------
@@ -393,13 +342,13 @@ DrawDigit:
       or e                ;          YYYXXXXX
       ld e, a       ; DE =  ---YYYYY YYYXXXXX
       ld hl, $9800
-      add hl, de
+      add hl, de          ; $9800 + DE (offset of char tile)
     pop af
 
     push af
-      add 144           ; Offset to "0" digit image
+      add 96              ; offset (refer to VRAM for tile position)
       call LCDWait
-      ld [hl], a        ; assign tile index to tilemap XY position
+      ld [hl], a          ; assign tile index to tilemap XY position
     pop af
   pop de
   pop hl
@@ -415,13 +364,15 @@ LCDWait:
   pop af
   ret
 
+; Moves DrawString cursor to next line
+; - Increments D (Y-pos)
+; - Resets E (X-pos) to original rCharX position
 NewLine:
-  push hl
-    ld hl, rCharY ; Move to next tile row
-    inc [hl]
-    ld hl, rCharX ; Reset tile column
-    ld [hl], 0
-  pop hl
+  push af
+    inc d
+    ld a, [rCharX]
+    ld e, a
+  pop af
   ret
 
 ; Set sprite
