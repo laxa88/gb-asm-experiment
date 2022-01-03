@@ -6,6 +6,7 @@
 
 INCLUDE "include/hardware.inc"
 INCLUDE "include/util.asm"
+INCLUDE "include/engine.asm"
 
 ; My tileset doesn't differentiate between small and large letters,
 ; so map the small letters as large letters.
@@ -162,7 +163,7 @@ WaitVBlank:
   ld de, MySpriteSheet
   ld hl, $8800
   ld bc, MySpriteSheetEnd - MySpriteSheet
-  call CopyTiles
+  call CopyData
 
   ; Turn the LCD on
   ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
@@ -421,35 +422,6 @@ NewLine:
     ld hl, rCharX ; Reset tile column
     ld [hl], 0
   pop hl
-  ret
-
-; At beginning of program, this is copied to $ff80 (available address for DMA)
-; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
-; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger
-; the DMA to copy data starting from $c000.
-; It will then wait $28 (160) cycles for the DMA to complete.
-; NOTE: Since music is reserved starting from $c000, we'll reserve $c100 for our
-; OAM data instead.
-DMACopy:
-  push af
-    ld a, rRAM_OAM/256          ; get top byte of sprite buffer starting address, i.e. $c0
-    ld [rDMA], a                ; trigger DMA transfer to copy data from on $c000
-    ld a, $28                   ; delay for 40 loops (1 loop = 4 ms, DMA completes in 160 ms)
-DMACopyWait:
-    dec a
-    jr nz, DMACopyWait          ; wait until DMA is complete
-  pop af
-  reti
-DMACopyEnd:
-
-CopyTiles:
-  ld a, [de]
-  ld [hli], a
-  inc de
-  dec bc
-  ld a, b
-  or a, c
-  jp nz, CopyTiles
   ret
 
 ; Set sprite
