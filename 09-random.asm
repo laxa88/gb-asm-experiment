@@ -426,13 +426,14 @@ ReadRandomNumber:
   push af
     ld a, [rInputsPressed]
     and INPUT_BTN_START
-    jp z, .end
+    jp z, ReadRandomNumberEnd
 
     ld a, [rRandNum]
+    mod 3
     ld d, 17              ; Y tile pos
     ld e, 3               ; X tile pos
     call Draw2Decimals
-.end
+ReadRandomNumberEnd:
   pop af
   ret
 
