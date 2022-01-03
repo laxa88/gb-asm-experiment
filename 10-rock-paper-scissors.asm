@@ -96,7 +96,6 @@ rCanUpdate: db
 rAnimCounter: db
 rCharX: db
 rCharY: db
-rRandNum: db
 rScreen: db
 rScreenState: db
 
@@ -192,7 +191,6 @@ WaitVBlank:
   ; Init variables
   xor a
   ld [rAnimCounter], a
-  ld [rRandNum], a
   ld [rCharX], a
   ld [rCharY], a
   ld [rScreen], a
