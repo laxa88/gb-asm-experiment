@@ -36,6 +36,17 @@ CHARMAP "x", "X"
 CHARMAP "y", "Y"
 CHARMAP "z", "Z"
 
+; Game macros
+
+macro draw_text ; String, X, Y
+  ld hl, \1
+  ld a, \2
+  ld [rCharX], a
+  ld a, \3
+  ld [rCharY], a
+  call DrawString
+endm
+
 ; Constants
 
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
@@ -48,6 +59,26 @@ DEF INPUT_DPAD_LEFT   EQU %00100000
 DEF INPUT_DPAD_UP     EQU %01000000
 DEF INPUT_DPAD_DOWN   EQU %10000000
 
+DEF STATE_SCREEN_TITLE EQU 0
+DEF STATE_SCREEN_GAME EQU 1
+DEF STATE_SCREEN_GAMEOVER EQU 2
+
+DEF STATE_TITLE_INIT EQU 0
+DEF STATE_TITLE_FADE_IN EQU 1
+DEF STATE_TITLE_ACTIVE EQU 2
+DEF STATE_TITLE_FADE_OUT EQU 3
+
+DEF STATE_GAME_INIT EQU 0
+DEF STATE_GAME_FADE_IN EQU 1
+DEF STATE_GAME_PLAYER_TURN EQU 2
+DEF STATE_GAME_SHOW_ROUND_RESULT EQU 3
+DEF STATE_GAME_FADE_OUT EQU 4
+
+DEF STATE_GAMEOVER_INIT EQU 0
+DEF STATE_GAMEOVER_FADE_IN EQU 1
+DEF STATE_GAMEOVER_ACTIVE EQU 2
+DEF STATE_GAMEOVER_FADE_OUT EQU 3
+
 SECTION "OAM RAM data", WRAM0
 
 ; These addresses will be dynamically allocated sequentially
@@ -56,18 +87,20 @@ SECTION "OAM RAM data", WRAM0
 rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 
 ; Local variables
-rInputs: dw
-rInputsPrev: dw
-rInputsPressed: dw
-rInputsReleased: dw
-rCrosshairX: dw
-rCrosshairY: dw
-rCanUpdate: dw
-rAnimCounter: dw
-rMusicId: dw
-rCharX: dw
-rCharY: dw
-rRandNum: dw
+rInputs: db
+rInputsPrev: db
+rInputsPressed: db
+rInputsReleased: db
+rCrosshairX: db
+rCrosshairY: db
+rCanUpdate: db
+rAnimCounter: db
+rMusicId: db
+rCharX: db
+rCharY: db
+rRandNum: db
+rScreen: db
+rScreenState: db
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address) to $40 (vblank interrupt)
@@ -129,12 +162,6 @@ WaitVBlank:
   xor a
   ld [rLCDC], a
 
-  ; Copy the tile data
-  ld de, Tiles
-  ld hl, $9000
-  ld bc, TilesEnd - Tiles
-  call CopyTiles
-
   ld de, MySpriteSheet
   ld hl, $8800
   ld bc, MySpriteSheetEnd - MySpriteSheet
@@ -181,13 +208,13 @@ WaitVBlank:
   ld a, $30
   ld [rCrosshairY], a
 
-  ; Print hello world only once
+  ; Init variables
   xor a
   ld [rRandNum], a
   ld [rCharX], a
   ld [rCharY], a
-  ld hl, Message
-  call DrawString
+  ld [rScreen], a
+  ld [rScreenState], a
 
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
@@ -209,15 +236,65 @@ Loop:
   xor a
   ld [rCanUpdate], a
 
-  call UpdateRandomNumber
-  call DrawRandNumber
-  call PlayMusic
-  call ReadInput
-  call SwitchMusic
-  call ReadRandomNumber
-  call PlaySFX
-  call MoveCrosshair
-  call DrawCrosshair
+  ; Jump to appropriate loop based on screen state
+  ld a, [rScreen]
+  cp STATE_SCREEN_GAME
+  jp z, UpdateGameScreen
+  cp STATE_SCREEN_GAMEOVER
+  jp z, UpdateGameOverScreen
+  ; Default fallthrough to title screen
+
+UpdateTitleScreen:
+  ld a, [rScreenState]
+  cp STATE_TITLE_FADE_IN
+  jp z, .fadein
+  cp STATE_TITLE_ACTIVE
+  jp z, .update
+  cp STATE_TITLE_FADE_OUT
+  jp z, .fadeout
+.init:
+  draw_text StrMenu1, 3, 12
+  draw_text StrMenu2, 3, 13
+  draw_text StrMenu3, 3, 14
+  ld a, STATE_TITLE_FADE_IN
+  ld [rScreenState], a
+  jp Loop
+.fadein:
+  jp Loop
+.update:
+  jp Loop
+.fadeout:
+  jp Loop
+
+UpdateGameScreen:
+.fadein:
+  jp Loop
+.update:
+  jp Loop
+.fadeout:
+  jp Loop
+.init:
+  jp Loop
+
+UpdateGameOverScreen:
+.fadein:
+  jp Loop
+.update:
+  jp Loop
+.fadeout:
+  jp Loop
+.init:
+  jp Loop
+
+  ; call UpdateRandomNumber
+  ; call DrawRandNumber
+  ; call PlayMusic
+  ; call ReadInput
+  ; call SwitchMusic
+  ; call ReadRandomNumber
+  ; call PlaySFX
+  ; call MoveCrosshair
+  ; call DrawCrosshair
 
   jp Loop
 
@@ -662,82 +739,30 @@ SetSprite:
   pop af
   ret
 
-SECTION "Binary data", ROM0
+SECTION "Data and constants", ROM0
 
-Tiles:
-  db $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff, $00,$ff
-  db $00,$ff, $00,$80, $00,$80, $00,$80, $00,$80, $00,$80, $00,$80, $00,$80
-  db $00,$ff, $00,$7e, $00,$7e, $00,$7e, $00,$7e, $00,$7e, $00,$7e, $00,$7e
-  db $00,$ff, $00,$01, $00,$01, $00,$01, $00,$01, $00,$01, $00,$01, $00,$01
-  db $00,$ff, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
-  db $00,$ff, $00,$7f, $00,$7f, $00,$7f, $00,$7f, $00,$7f, $00,$7f, $00,$7f
-  db $00,$ff, $03,$fc, $00,$f8, $00,$f0, $00,$e0, $20,$c0, $00,$c0, $40,$80
-  db $00,$ff, $c0,$3f, $00,$1f, $00,$0f, $00,$07, $04,$03, $00,$03, $02,$01
-  db $00,$80, $00,$80, $7f,$80, $00,$80, $00,$80, $7f,$80, $7f,$80, $00,$80
-  db $00,$7e, $2a,$7e, $d5,$7e, $2a,$7e, $54,$7e, $ff,$00, $ff,$00, $00,$00
-  db $00,$01, $00,$01, $ff,$01, $00,$01, $01,$01, $fe,$01, $ff,$01, $00,$01
-  db $00,$80, $80,$80, $7f,$80, $80,$80, $00,$80, $ff,$80, $7f,$80, $80,$80
-  db $00,$7f, $2a,$7f, $d5,$7f, $2a,$7f, $55,$7f, $ff,$00, $ff,$00, $00,$00
-  db $00,$ff, $aa,$ff, $55,$ff, $aa,$ff, $55,$ff, $fa,$07, $fd,$07, $02,$07
-  db $00,$7f, $2a,$7f, $d5,$7f, $2a,$7f, $55,$7f, $aa,$7f, $d5,$7f, $2a,$7f
-  db $00,$ff, $80,$ff, $00,$ff, $80,$ff, $00,$ff, $80,$ff, $00,$ff, $80,$ff
-  db $40,$80, $00,$80, $7f,$80, $00,$80, $00,$80, $7f,$80, $7f,$80, $00,$80
-  db $00,$3c, $02,$7e, $85,$7e, $0a,$7e, $14,$7e, $ab,$7e, $95,$7e, $2a,$7e
-  db $02,$01, $00,$01, $ff,$01, $00,$01, $01,$01, $fe,$01, $ff,$01, $00,$01
-  db $00,$ff, $80,$ff, $50,$ff, $a8,$ff, $50,$ff, $a8,$ff, $54,$ff, $a8,$ff
-  db $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80
-  db $ff,$00, $ff,$00, $ff,$00, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e
-  db $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $fe,$01
-  db $7f,$80, $ff,$80, $7f,$80, $ff,$80, $7f,$80, $ff,$80, $7f,$80, $ff,$80
-  db $ff,$00, $ff,$00, $ff,$00, $aa,$7f, $d5,$7f, $aa,$7f, $d5,$7f, $aa,$7f
-  db $f8,$07, $f8,$07, $f8,$07, $80,$ff, $00,$ff, $aa,$ff, $55,$ff, $aa,$ff
-  db $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $ff,$80, $7f,$80, $ff,$80
-  db $d5,$7f, $aa,$7f, $d5,$7f, $aa,$7f, $d5,$7f, $aa,$7f, $d5,$7f, $aa,$7f
-  db $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $eb,$3c
-  db $54,$ff, $aa,$ff, $54,$ff, $aa,$ff, $54,$ff, $aa,$ff, $54,$ff, $aa,$ff
-  db $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $00,$ff
-  db $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $2a,$ff
-  db $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $80,$ff
-  db $7f,$80, $ff,$80, $7f,$80, $ff,$80, $7f,$80, $ff,$80, $7f,$80, $aa,$ff
-  db $ff,$00, $ff,$00, $ff,$00, $ff,$00, $ff,$00, $ff,$00, $ff,$00, $2a,$ff
-  db $ff,$01, $fe,$01, $ff,$01, $fe,$01, $fe,$01, $fe,$01, $fe,$01, $80,$ff
-  db $7f,$80, $ff,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $7f,$80, $00,$ff
-  db $fe,$01, $fe,$01, $fe,$01, $fe,$01, $fe,$01, $fe,$01, $fe,$01, $80,$ff
-  db $3f,$c0, $3f,$c0, $3f,$c0, $1f,$e0, $1f,$e0, $0f,$f0, $03,$fc, $00,$ff
-  db $fd,$03, $fc,$03, $fd,$03, $f8,$07, $f9,$07, $f0,$0f, $c1,$3f, $82,$ff
-  db $55,$ff, $2a,$7e, $54,$7e, $2a,$7e, $54,$7e, $2a,$7e, $54,$7e, $00,$7e
-  db $01,$ff, $00,$01, $01,$01, $00,$01, $01,$01, $00,$01, $01,$01, $00,$01
-  db $54,$ff, $ae,$f8, $50,$f0, $a0,$e0, $60,$c0, $80,$c0, $40,$80, $40,$80
-  db $55,$ff, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
-  db $55,$ff, $6a,$1f, $05,$0f, $02,$07, $05,$07, $02,$03, $03,$01, $02,$01
-  db $54,$ff, $80,$80, $00,$80, $80,$80, $00,$80, $80,$80, $00,$80, $00,$80
-  db $55,$ff, $2a,$1f, $0d,$07, $06,$03, $01,$03, $02,$01, $01,$01, $00,$01
-  db $55,$ff, $2a,$7f, $55,$7f, $2a,$7f, $55,$7f, $2a,$7f, $55,$7f, $00,$7f
-  db $55,$ff, $aa,$ff, $55,$ff, $aa,$ff, $55,$ff, $aa,$ff, $55,$ff, $00,$ff
-  db $15,$ff, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00, $00,$00
-  db $55,$ff, $6a,$1f, $0d,$07, $06,$03, $01,$03, $02,$01, $03,$01, $00,$01
-  db $54,$ff, $a8,$ff, $54,$ff, $a8,$ff, $50,$ff, $a0,$ff, $40,$ff, $00,$ff
-  db $00,$7e, $2a,$7e, $d5,$7e, $2a,$7e, $54,$7e, $ab,$76, $dd,$66, $22,$66
-  db $00,$7c, $2a,$7e, $d5,$7e, $2a,$7e, $54,$7c, $ff,$00, $ff,$00, $00,$00
-  db $00,$01, $00,$01, $ff,$01, $02,$01, $07,$01, $fe,$03, $fd,$07, $0a,$0f
-  db $00,$7c, $2a,$7e, $d5,$7e, $2a,$7e, $54,$7e, $ab,$7e, $d5,$7e, $2a,$7e
-  db $00,$ff, $a0,$ff, $50,$ff, $a8,$ff, $54,$ff, $a8,$ff, $54,$ff, $aa,$ff
-  db $dd,$62, $bf,$42, $fd,$42, $bf,$40, $ff,$00, $ff,$00, $f7,$08, $ef,$18
-  db $ff,$00, $ff,$00, $ff,$00, $ab,$7c, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e
-  db $f9,$07, $fc,$03, $fd,$03, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $fe,$01
-  db $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7e, $d5,$7e, $ab,$7c
-  db $f7,$18, $eb,$1c, $d7,$3c, $eb,$3c, $d5,$3e, $ab,$7e, $d5,$7e, $2a,$ff
-  db $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $fe,$01, $ff,$01, $a2,$ff
-  db $7f,$c0, $bf,$c0, $7f,$c0, $bf,$e0, $5f,$e0, $af,$f0, $57,$fc, $aa,$ff
-  db $ff,$01, $fc,$03, $fd,$03, $fc,$03, $f9,$07, $f0,$0f, $c1,$3f, $82,$ff
-  db $55,$ff, $2a,$ff, $55,$ff, $2a,$ff, $55,$ff, $2a,$ff, $55,$ff, $00,$ff
-  db $45,$ff, $a2,$ff, $41,$ff, $82,$ff, $41,$ff, $80,$ff, $01,$ff, $00,$ff
-  db $54,$ff, $aa,$ff, $54,$ff, $aa,$ff, $54,$ff, $aa,$ff, $54,$ff, $00,$ff
-  db $15,$ff, $2a,$ff, $15,$ff, $0a,$ff, $15,$ff, $0a,$ff, $01,$ff, $00,$ff
-  db $01,$ff, $80,$ff, $01,$ff, $80,$ff, $01,$ff, $80,$ff, $01,$ff, $00,$ff
-TilesEnd:
+; Binaries
+MySpriteSheet:
+  incbin "./resource/sprite-sheet.bin"
+MySpriteSheetEnd:
+
+; Constants
+StrMenu1: db "Play once", 255
+StrMenu2: db "Play best of 3", 255
+StrMenu3: db "Play best of 5", 255
+StrPaper: db "Paper", 255
+StrRock: db "Rock", 255
+StrScissors: db "Scissors", 255
+StrBeats: db "beats", 255
+StrLosesTo: db "loses to", 255
+StrWin: db "You won!", 255
+StrLose: db "You lost...", 255
 
 SECTION "Tilemap", ROM0
+
+TitleScreenMap:
+  ; TODO
+TitleScreenMapEnd:
 
 Tilemap:
   db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
@@ -759,9 +784,3 @@ Tilemap:
   db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
   db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
 TilemapEnd:
-
-MySpriteSheet:
-  incbin "./resource/sprite-sheet.bin"
-MySpriteSheetEnd:
-
-Message: db "Hello world 123!", 255
