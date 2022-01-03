@@ -193,3 +193,33 @@ LCDWait:
     jr nz, .loop
   pop af
   ret
+
+; Set sprite in the OAM
+; - A = Sprite number (0 to 39)
+; - BC = X,Y
+; - E = Tile index from VRAM
+; - H = Palette, etc
+; - Note: On GB, XY needs to be 8,16 to get top-left corner of screen (?)
+SetSprite:
+  push af
+    ; rotate A left, copy bit-7 to Carry and bit-0
+    rlca                  ; 4 bytes per sprite
+    rlca
+    push hl
+    push de
+      push hl
+        ld hl, rRAM_OAM   ; Cache to be copied via DMA
+        ld l, a           ; address for selected sprite
+        ld a, c           ; Y
+        ldi [hl], a
+        ld a, b           ; X
+        ldi [hl], a
+        ld a, e           ; tile
+        ldi [hl], a
+      pop hl
+      ld a, d             ; attributes
+      ldi [hl], a
+    pop de
+    pop hl
+  pop af
+  ret
