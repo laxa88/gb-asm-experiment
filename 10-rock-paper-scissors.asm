@@ -91,11 +91,8 @@ rInputs: db
 rInputsPrev: db
 rInputsPressed: db
 rInputsReleased: db
-rCrosshairX: db
-rCrosshairY: db
 rCanUpdate: db
 rAnimCounter: db
-rMusicId: db
 rCharX: db
 rCharY: db
 rRandNum: db
@@ -167,12 +164,6 @@ WaitVBlank:
   ld bc, MySpriteSheetEnd - MySpriteSheet
   call CopyTiles
 
-  ; Copy the tilemap
-  ld de, Tilemap
-  ld hl, $9800
-  ld bc, TilemapEnd - Tilemap
-  call CopyTilemap
-
   ; Turn the LCD on
   ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
   ld [rLCDC], a
@@ -200,16 +191,6 @@ WaitVBlank:
   ; Init variables
   xor a
   ld [rAnimCounter], a
-  ld [rMusicId], a
-
-  ; Init crosshair image position
-  ld a, $58
-  ld [rCrosshairX], a
-  ld a, $30
-  ld [rCrosshairY], a
-
-  ; Init variables
-  xor a
   ld [rRandNum], a
   ld [rCharX], a
   ld [rCharY], a
@@ -284,18 +265,6 @@ UpdateGameOverScreen:
 .fadeout:
   jp Loop
 .init:
-  jp Loop
-
-  ; call UpdateRandomNumber
-  ; call DrawRandNumber
-  ; call PlayMusic
-  ; call ReadInput
-  ; call SwitchMusic
-  ; call ReadRandomNumber
-  ; call PlaySFX
-  ; call MoveCrosshair
-  ; call DrawCrosshair
-
   jp Loop
 
 SECTION "Global functions", ROM0
@@ -454,222 +423,6 @@ NewLine:
   pop hl
   ret
 
-; Reads inputs and puts them in register A, where:
-; - hi-nibble is dpad (7654 = Down, Up, Left, Right)
-; - lo-nibble is buttons (3210 = Start, Select, B, A)
-; - 1 = pressed, 0 = not pressed
-; e.g. 00010010 = RIGHT and B are pressed
-ReadInput:
-  push af
-  push bc
-    ; Save previous inputs
-    ld a, [rInputs]
-    ld c, a               ; Save this for pressed/released logic below
-    ld [rInputsPrev], a
-
-    ; Read new inputs
-    xor a
-    ld [rP1], a       ; Reset all input states before checking every loop
-    ; Reference: https://gbdev.io/pandocs/Joypad_Input.html
-    ld a, P1F_GET_DPAD
-    ld [rP1], a
-    ld a, [rP1]       ; read values (Remember: 0 = selected!)
-    or %11110000      ; pad hi-nibble first
-    swap a            ; move values to bits-7654 (dpad nibble)
-    ld b, a           ; save to B
-    ld a, P1F_GET_BTN
-    ld [rP1], a
-    ld a, [rP1]       ; read values (Remember: 0 = selected!)
-    ld a, [rP1]       ; read another time to stabilise input
-    or %11110000      ; ignore upper nibble
-    and b             ; merge with dpad nibble
-    cpl               ; invert A such that 1 = selected
-    ld [rInputs], a   ; save latest inputs
-
-    ; Save pressed/released states
-    xor c
-    ld b, a                 ; XOR old and new inputs to get all changed bits, save to B
-    ld a, [rInputs]
-    and b
-    ld [rInputsPressed], a  ; AND only new inputs as "pressed"
-    ld a, [rInputsPrev]
-    and b
-    ld [rInputsReleased], a ; AND only old inputs as "released"
-  pop bc
-  pop af
-  ret
-
-ReadRandomNumber:
-  push af
-    ld a, [rInputsPressed]
-    and INPUT_BTN_START
-    jp z, ReadRandomNumberEnd
-
-    ld a, [rRandNum]
-    mod 3
-    ld d, 17              ; Y tile pos
-    ld e, 3               ; X tile pos
-    call Draw2Decimals
-ReadRandomNumberEnd:
-  pop af
-  ret
-
-SwitchMusic:
-  push af
-    ld a, [rInputsPressed]
-    and INPUT_BTN_B
-    jp z, .end
-
-    ; Check BGM toggle
-    ld a, [rMusicId]
-    cp 1
-    jr z, .toggleQuasar
-    cp 0
-    jr z, .togglePkmn
-    jp .end
-.togglePkmn:
-    ld hl, pokemon_center
-    call hUGE_init
-    ld a, 1
-    ld [rMusicId], a
-    jp .end
-.toggleQuasar:
-    ld hl, quasar
-    call hUGE_init
-    ld a, 0
-    ld [rMusicId], a
-.end:
-  pop af
-  ret
-
-PlaySFX:
-  push af
-    ld a, [rInputsPressed]
-    and INPUT_BTN_A
-    jp z, .skip
-
-    ; play sound
-    ld a, $15
-    ld [rNR10], a
-    ld a, $96
-    ld [rNR11], a
-    ld a, $73
-    ld [rNR12], a
-    ld a, $BB
-    ld [rNR13], a
-    ld a, $85
-    ld [rNR14], a
-.skip:
-  pop af
-  ret
-
-MoveCrosshair:
-  push bc
-    ; Load XY pos
-    push af
-      ld a, [rCrosshairX]
-      ld b, a
-      ld a, [rCrosshairY]
-      ld c, a
-    pop af
-
-    ; Update XY pos
-    push af
-.checkRight
-      ld a, [rInputs]
-      and INPUT_DPAD_RIGHT
-      jr z, .checkLeft
-      inc b
-.checkLeft
-      ld a, [rInputs]
-      and INPUT_DPAD_LEFT
-      jr z, .checkUp
-      dec b
-.checkUp
-      ld a, [rInputs]
-      and INPUT_DPAD_UP
-      jr z, .checkDown
-      dec c
-.checkDown
-      ld a, [rInputs]
-      and INPUT_DPAD_DOWN
-      jr z, .done
-      inc c
-.done
-    pop af
-    ; Save XY pos
-    push af
-      ld a, b
-      ld [rCrosshairX], a
-      ld a, c
-      ld [rCrosshairY], a
-    pop af
-  pop bc
-  ret
-
-DrawCrosshair:
-  push af
-  push bc
-    ld a, [rCrosshairX]
-    ld b, a
-    ld a, [rCrosshairY]
-    ld c, a
-    push bc
-      ld e, $fc       ; tile index
-      ld h, 0         ; tile details (palette, etc.)
-      ld a, 0         ; OBJ 0
-      call SetSprite  ; top left
-    pop bc
-    push bc
-      ld a, b
-      add 8
-      ld b, a
-      ld e, $fe
-      ld a, 1         ; OBJ 1
-      call SetSprite  ; top right
-    pop bc
-    push bc
-      ld a, c
-      add 8
-      ld c, a
-      ld e, $fd
-      ld a, 2         ; OBJ 2
-      call SetSprite  ; bottom left
-    pop bc
-    push bc
-      ld a, b
-      add 8
-      ld b, a
-      ld a, c
-      add 8
-      ld c, a
-      ld e, $ff
-      ld a, 3         ; OBJ 2
-      call SetSprite  ; bottom left
-    pop bc
-  pop bc
-  pop af
-  ret
-
-DrawRandNumber:
-  ld a, [rRandNum]      ; 0 ~ 99
-  ld d, 17              ; Y tile pos
-  ld e, 0               ; X tile pos
-  call Draw2Decimals
-  ret
-
-PlayMusic:
-  push af
-  push hl
-  push bc
-  push de
-    call hUGE_dosound
-  pop de
-  pop bc
-  pop hl
-  pop af
-  ret
-
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
 ; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
 ; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger
@@ -697,16 +450,6 @@ CopyTiles:
   ld a, b
   or a, c
   jp nz, CopyTiles
-  ret
-
-CopyTilemap:
-  ld a, [de]
-  ld [hli], a
-  inc de
-  dec bc
-  ld a, b
-  or a, c
-  jp nz, CopyTilemap
   ret
 
 ; Set sprite
@@ -764,23 +507,3 @@ TitleScreenMap:
   ; TODO
 TitleScreenMapEnd:
 
-Tilemap:
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $01, $02, $03, $01, $04, $03, $01, $05, $00, $01, $05, $00, $06, $04, $07, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $08, $09, $0a, $0b, $0c, $0d, $0b, $0e, $0f, $08, $0e, $0f, $10, $11, $12, $13, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $14, $15, $16, $17, $18, $19, $1a, $1b, $0f, $14, $1b, $0f, $14, $1c, $16, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $1e, $1f, $20, $21, $22, $23, $24, $22, $25, $1e, $22, $25, $26, $22, $27, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $01, $28, $29, $2a, $2b, $2c, $2d, $2b, $2e, $2d, $2f, $30, $2d, $31, $32, $33, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $08, $34, $0a, $0b, $11, $0a, $0b, $35, $36, $0b, $0e, $0f, $08, $37, $0a, $38, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $14, $39, $16, $17, $1c, $16, $17, $3a, $3b, $17, $1b, $0f, $14, $3c, $16, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $1e, $3d, $3e, $3f, $22, $27, $21, $1f, $20, $21, $22, $25, $1e, $22, $40, $1d, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $41, $42, $43, $44, $30, $33, $41, $45, $43, $41, $30, $43, $41, $30, $33, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-  db $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00, $00,  0,0,0,0,0,0,0,0,0,0,0,0
-TilemapEnd:
