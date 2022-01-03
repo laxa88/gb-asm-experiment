@@ -77,3 +77,119 @@ ReadInput:
   pop bc
   pop af
   ret
+
+; Draws a string of text:
+; - HL = address of the text to be printed
+; - DE = YX position
+; - rCharX / rCharY = address of XY values
+; - Print a chars until we see a newline or EOL char
+; - For now, EOL = 255, newline = 10 (LF, aka \n)
+DrawString:
+  ld a, [rCharY]
+  ld d, a
+  ld a, [rCharX]
+  ld e, a
+.loop:
+  ld a, [hl]
+  cp 255            ; return if EOL char
+  ret z
+  cp 10             ; move to next line if LF char
+  jr nz, .draw
+  inc hl
+  inc e
+  call NewLine
+  jr .loop
+.draw:
+  inc hl
+  call DrawChar
+  inc e             ; move to next character
+  jr .loop
+
+DrawChar:
+  push af
+    add 96          ; offset to start of ASCII table (32)
+    call DrawTile
+  pop af
+  ret
+
+; Draws 2-digit decimals:
+; - DE = YX position
+; - A = 2-digit decimals ($00 - $99)
+Draw2Decimals:
+  push af
+  push bc
+  push de
+    ; temp store A
+    ld c, a
+
+    ; Print left number
+    and %11110000
+    swap a
+    call DrawDigit
+
+    ; Print right number
+    inc e       ; X + 1
+    ld a, c
+    and %00001111
+    call DrawDigit
+  pop de
+  pop bc
+  pop af
+  ret
+
+DrawDigit:
+  push af
+    add 144         ; offset to start of "0" digit
+    call DrawTile
+  pop af
+  ret
+
+; Draws character at position DE (YX-position):
+; - A = tile index
+DrawTile:
+  ; get index offset (XY from tilemap start address $9800)
+  ; print char
+  push hl
+  push de
+    push af
+      xor a
+      rr d                ; -YYYYYYY
+      rra                 ;          Y-------
+      rr d                ; --YYYYYY
+      rra                 ;          YY------
+      rr d                ; ---YYYYY
+      rra                 ;          YYY-----
+      or e                ;          YYYXXXXX
+      ld e, a       ; DE =  ---YYYYY YYYXXXXX
+      ld hl, $9800
+      add hl, de          ; $9800 + DE (offset of char tile)
+    pop af
+
+    push af
+      call LCDWait
+      ld [hl], a          ; assign tile index to tilemap XY position
+    pop af
+  pop de
+  pop hl
+  ret
+
+; Moves DrawString cursor to next line
+; - Increments D (Y-pos)
+; - Resets E (X-pos) to original rCharX position
+NewLine:
+  push af
+    inc d
+    ld a, [rCharX]
+    ld e, a
+  pop af
+  ret
+
+; Wait until LCD is safe to draw on
+LCDWait:
+  push af
+.loop:
+    ld a, [rSTAT]     ; check LCD status
+    and %00000010
+    jr nz, .loop
+  pop af
+  ret
