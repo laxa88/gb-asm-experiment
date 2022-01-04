@@ -37,28 +37,13 @@ CHARMAP "x", "X"
 CHARMAP "y", "Y"
 CHARMAP "z", "Z"
 
-; Game macros
+; Game constants and macros
 
-macro draw_text ; String, X, Y
-  ld hl, \1
-  ld a, \2
-  ld [rCharX], a
-  ld a, \3
-  ld [rCharY], a
-  call DrawString
-endm
+
 
 ; Constants
 
 DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
-DEF INPUT_BTN_A       EQU %00000001
-DEF INPUT_BTN_B       EQU %00000010
-DEF INPUT_BTN_SELECT  EQU %00000100
-DEF INPUT_BTN_START   EQU %00001000
-DEF INPUT_DPAD_RIGHT  EQU %00010000
-DEF INPUT_DPAD_LEFT   EQU %00100000
-DEF INPUT_DPAD_UP     EQU %01000000
-DEF INPUT_DPAD_DOWN   EQU %10000000
 
 DEF STATE_SCREEN_TITLE EQU 0
 DEF STATE_SCREEN_GAME EQU 1
@@ -88,14 +73,9 @@ SECTION "OAM RAM data", WRAM0
 rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 
 ; Local variables
-rInputs: db
-rInputsPrev: db
-rInputsPressed: db
-rInputsReleased: db
 rCanUpdate: db
 rAnimCounter: db
-rCharX: db
-rCharY: db
+rCursorIndex: db
 rScreen: db
 rScreenState: db
 
@@ -171,6 +151,7 @@ WaitVBlank:
   ; During the first (blank) frame, initialize display registers
   ld a, %11100100
   ld [rBGP], a    ; bg palette
+  ld a, %11100010
   ld [rOBP0], a   ; obj 0 palette
   cpl ; invert a
   ld [rOBP1], a   ; obj 1 palette (usually inverted of obj 0)
@@ -191,10 +172,10 @@ WaitVBlank:
   ; Init variables
   xor a
   ld [rAnimCounter], a
-  ld [rCharX], a
-  ld [rCharY], a
+  ld [rCursorIndex], a
   ld [rScreen], a
   ld [rScreenState], a
+  call InitEngineVariables
 
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
@@ -224,47 +205,134 @@ GameLoop:
   jp z, UpdateGameOverScreen
   ; Default fallthrough to title screen
 
+
+
 UpdateTitleScreen:
   ld a, [rScreenState]
+  cp STATE_TITLE_INIT
+  jp z, .init
   cp STATE_TITLE_FADE_IN
   jp z, .fadein
   cp STATE_TITLE_ACTIVE
-  jp z, .update
+  jp z, .active
   cp STATE_TITLE_FADE_OUT
   jp z, .fadeout
+
 .init:
   draw_text StrMenu1, 3, 12
   draw_text StrMenu2, 3, 13
   draw_text StrMenu3, 3, 14
+  call DrawTitleCursor
+  ; TODO: reset BG palette
+
   ld a, STATE_TITLE_FADE_IN
   ld [rScreenState], a
   jp GameLoop
+
 .fadein:
+  ; TODO: animate palette
+  ld a, STATE_TITLE_ACTIVE
+  ld [rScreenState], a
   jp GameLoop
-.update:
+
+.active:
+  call ReadInput
+  check_pressed INPUT_DPAD_DOWN, nz, .moveCursorDown
+  check_pressed INPUT_DPAD_UP, nz, .moveCursorUp
+  check_pressed INPUT_BTN_A, nz, .startGame
   jp GameLoop
+
+.moveCursorDown:
+  ld a, [rCursorIndex]
+  inc a
+  cp 3
+  jp nz, .moveCursorDownOk
+  xor a ; wrap back to index 0
+.moveCursorDownOk:
+  ld [rCursorIndex], a
+  call DrawTitleCursor
+  jp GameLoop
+.moveCursorUp:
+  ld a, [rCursorIndex]
+  dec a
+  cp 255 ; -1 is also known as 255
+  jp nz, .moveCursorUpOk
+  ld a, 2 ; wrap back to index 2
+.moveCursorUpOk:
+  ld [rCursorIndex], a
+  call DrawTitleCursor
+  jp GameLoop
+.startGame:
+  call ClearTiles
+  ; TODO: set game mode (1/3/5 rounds)
+  ld a, STATE_TITLE_FADE_OUT
+  ld [rScreenState], a
+  jp GameLoop
+
 .fadeout:
+  ; TODO: clear screen
   jp GameLoop
+
+
 
 UpdateGameScreen:
+.init:
+  jp GameLoop
 .fadein:
   jp GameLoop
-.update:
+.active:
   jp GameLoop
 .fadeout:
-  jp GameLoop
-.init:
   jp GameLoop
 
+
+
 UpdateGameOverScreen:
+.init:
+  jp GameLoop
 .fadein:
   jp GameLoop
-.update:
+.active:
   jp GameLoop
 .fadeout:
   jp GameLoop
-.init:
-  jp GameLoop
+
+
+
+SECTION "Game functions", ROM0
+
+; Draw title cursor at:
+; - rCursorIndex = 0/1/2 position
+DrawTitleCursor:
+  push af
+  push bc
+  push de
+  push hl
+    ld a, 8*3
+    ld b, a       ; X pos
+
+    ld a, [rCursorIndex]
+    cp 0
+    jr z, .setYPos
+    ld d, a       ; increment A by [rCursorIndex * 8 pixels]
+    xor a
+.loop:
+    add 8
+    dec d
+    jr nz, .loop
+.setYPos:
+    add 8*14      ; offset A by 14 tiles * 8 pixels
+    ld c, a       ; Y pos
+
+    ld e, $bb     ; cursor tile
+    ld h, 0       ; sprite palette
+    ld a, 0       ; sprite number
+    call SetSprite
+  pop hl
+  pop de
+  pop bc
+  pop af
+  ret
 
 SECTION "Global functions", ROM0
 

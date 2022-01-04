@@ -1,4 +1,53 @@
+; Constants and macros
+
+DEF INPUT_BTN_A       EQU %00000001
+DEF INPUT_BTN_B       EQU %00000010
+DEF INPUT_BTN_SELECT  EQU %00000100
+DEF INPUT_BTN_START   EQU %00001000
+DEF INPUT_DPAD_RIGHT  EQU %00010000
+DEF INPUT_DPAD_LEFT   EQU %00100000
+DEF INPUT_DPAD_UP     EQU %01000000
+DEF INPUT_DPAD_DOWN   EQU %10000000
+
+macro draw_text ; String, X, Y
+  ld hl, \1
+  ld a, \2
+  ld [rCharX], a
+  ld a, \3
+  ld [rCharY], a
+  call DrawString
+endm
+
+; Note: make sure ReadInput is called first
+macro check_pressed ; INPUT_CONSTANT, flag, methodNameOnTrue
+  ld a, [rInputsPressed]
+  and \1
+  jp \2, \3
+endm
+
+SECTION "Engine variables", WRAM0
+
+rInputs: db
+rInputsPrev: db
+rInputsPressed: db
+rInputsReleased: db
+
+rCharX: db
+rCharY: db
+
 SECTION "Common functions", ROM0
+
+InitEngineVariables:
+  push af
+    xor a
+    ld [rCharX], a
+    ld [rCharY], a
+    ld [rInputs], a
+    ld [rInputsPrev], a
+    ld [rInputsPressed], a
+    ld [rInputsReleased], a
+  pop af
+  ret
 
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
 ; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
@@ -146,6 +195,7 @@ DrawDigit:
 
 ; Draws character at position DE (YX-position):
 ; - A = tile index
+; - DE = YX position
 DrawTile:
   ; get index offset (XY from tilemap start address $9800)
   ; print char
@@ -171,6 +221,31 @@ DrawTile:
     pop af
   pop de
   pop hl
+  ret
+
+; Use to clear BG layer, e.g. when transitioning between screens
+; TODO: It is heavy to clear the entire BG map, consider only clearing
+; the tiles within the viewport.
+ClearTiles:
+  push af
+  push bc
+  push hl
+    xor a
+    ld b, a
+    ld c, a
+    ld hl, $9800
+.loop:
+    ld [hli], a
+    inc c
+    cp 32
+    jr nz, .loop
+    ld c, a
+    inc b
+    cp 32
+    jr nz, .loop
+  pop hl
+  pop bc
+  pop af
   ret
 
 ; Moves DrawString cursor to next line
