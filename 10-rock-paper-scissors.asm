@@ -45,9 +45,9 @@ CHARMAP "z", "Z"
 
 DEF ANIM_FPS EQU 8           ; update 1 animation frame per n vblank cycles
 
-DEF STATE_SCREEN_TITLE EQU 0
-DEF STATE_SCREEN_GAME EQU 1
-DEF STATE_SCREEN_GAMEOVER EQU 2
+DEF SCREEN_TITLE EQU 0
+DEF SCREEN_GAME EQU 1
+DEF SCREEN_GAMEOVER EQU 2
 
 DEF STATE_TITLE_INIT EQU 0
 DEF STATE_TITLE_FADE_IN EQU 1
@@ -182,8 +182,8 @@ WaitVBlank:
   ld [rResetAnimCounter], a
   ld [rCursorIndex], a
   ld [rFadeCounter], a
-  ld [rScreen], a
-  ld [rScreenState], a
+  ld [rScreen], a         ; SCREEN_TITLE
+  ld [rScreenState], a    ; STATE_TITLE_INIT
   call InitEngineVariables
 
   ; Init sound
@@ -208,9 +208,11 @@ GameLoop:
 
   ; Jump to appropriate loop based on screen state
   ld a, [rScreen]
-  cp STATE_SCREEN_GAME
+  cp SCREEN_TITLE
+  jp z, UpdateTitleScreen
+  cp SCREEN_GAME
   jp z, UpdateGameScreen
-  cp STATE_SCREEN_GAMEOVER
+  cp SCREEN_GAMEOVER
   jp z, UpdateGameOverScreen
   ; Default fallthrough to title screen
 
@@ -231,11 +233,10 @@ UpdateTitleScreen:
   draw_text StrMenu1, 3, 12
   draw_text StrMenu2, 3, 13
   draw_text StrMenu3, 3, 14
-  call DrawTitleCursor
 
   ld a, %00000000
   ld [rBGP], a    ; bg palette
-  ld a, 4         ; start from offset 4-palettes, then 3, 2, 1
+  ld a, 4         ; fade 4 palette cycles
   ld [rFadeCounter], a
 
   ld a, STATE_TITLE_FADE_IN
@@ -254,14 +255,14 @@ UpdateTitleScreen:
       ld b, a ; B = rFadeCounter
       ld a, DEFAULT_BG_PALETTE
       ld c, a ; C = DEFAULT_BG_PALETTE
-.shiftPaletteCheck:
+.fadeinPaletteCheck:
       dec b ; decrement rFadeCounter
-      jr z, .shiftPaletteDone
-.shiftPalette:
+      jr z, .fadeinPaletteDone
+.fadeinPalette:
       sla c
       sla c
-      jr .shiftPaletteCheck
-.shiftPaletteDone:
+      jr .fadeinPaletteCheck
+.fadeinPaletteDone:
       ld a, c
       ld [rBGP], a
     pop af
@@ -272,6 +273,8 @@ UpdateTitleScreen:
   ld [rResetAnimCounter], a
   jp GameLoop
 .fadeinDone:
+  call DrawTitleCursor
+  ; TODO call DrawTitleLogo
   ld a, STATE_TITLE_ACTIVE
   ld [rScreenState], a
   jp GameLoop
@@ -281,9 +284,6 @@ UpdateTitleScreen:
   check_pressed INPUT_DPAD_DOWN, nz, .moveCursorDown
   check_pressed INPUT_DPAD_UP, nz, .moveCursorUp
   check_pressed INPUT_BTN_A, nz, .startGame
-  ; ld a, [rAnimCounter]
-  ; and 1
-  ; call z, SetBGPalette1
   jp GameLoop
 .moveCursorDown:
   ld a, [rCursorIndex]
@@ -308,12 +308,63 @@ UpdateTitleScreen:
 .startGame:
   call ClearTiles
   ; TODO: set game mode (1/3/5 rounds)
+
+  ; Clear cursor sprite
+  xor a       ; sprite number
+  ld b, a     ; X
+  ld c, a     ; Y
+  ld e, a     ; cursor tile
+  ld h, a     ; sprite palette
+  call SetSprite
+
+  ld a, DEFAULT_BG_PALETTE
+  ld [rBGP], a    ; bg palette
+  xor a           ; fade 0 to 4 palette cycles
+  ld [rFadeCounter], a
+
   ld a, STATE_TITLE_FADE_OUT
   ld [rScreenState], a
   jp GameLoop
 
 .fadeout:
-  ; TODO: clear screen
+  ld a, [rAnimCounter]
+  or a
+  jp nz, GameLoop
+  ld a, [rFadeCounter]
+  cp 5
+  jr z, .fadeoutDone
+  push bc
+    push af
+      ld a, DEFAULT_BG_PALETTE
+      ld c, a ; C = DEFAULT_BG_PALETTE
+      ld a, [rFadeCounter]
+      cp 0
+      jr z, .fadeoutPaletteDone
+      ld b, a
+.fadeoutPaletteCheck:
+      dec b ; decrement rFadeCounter
+      jr z, .fadeoutPaletteDone
+.fadeoutPalette:
+      sla c
+      sla c
+      jr .fadeoutPaletteCheck
+.fadeoutPaletteDone:
+      ld a, c
+      ld [rBGP], a
+    pop af
+    inc a
+    ld [rFadeCounter], a
+  pop bc
+  ld a, 1
+  ld [rResetAnimCounter], a
+  jp GameLoop
+.fadeoutDone:
+  ; TODO clear screen
+
+  ld a, STATE_GAME_INIT
+  ld [rScreenState], a
+  ld a, SCREEN_GAME
+  ld [rScreen], a
   jp GameLoop
 
 
