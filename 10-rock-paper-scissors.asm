@@ -43,7 +43,7 @@ CHARMAP "z", "Z"
 
 ; Constants
 
-DEF ANIM_FPS EQU $8           ; update 1 animation frame per n vblank cycles
+DEF ANIM_FPS EQU 8           ; update 1 animation frame per n vblank cycles
 
 DEF STATE_SCREEN_TITLE EQU 0
 DEF STATE_SCREEN_GAME EQU 1
@@ -65,6 +65,9 @@ DEF STATE_GAMEOVER_FADE_IN EQU 1
 DEF STATE_GAMEOVER_ACTIVE EQU 2
 DEF STATE_GAMEOVER_FADE_OUT EQU 3
 
+DEF DEFAULT_BG_PALETTE EQU %11100100
+DEF DEFAULT_OBJ_PALETTE EQU %11100010
+
 SECTION "OAM RAM data", WRAM0
 
 ; These addresses will be dynamically allocated sequentially
@@ -75,7 +78,10 @@ rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 ; Local variables
 rCanUpdate: db
 rAnimCounter: db
+rResetAnimCounter: db
 rCursorIndex: db
+rFadeCounter: db
+rCurrBgPalette: db
 rScreen: db
 rScreenState: db
 
@@ -149,9 +155,10 @@ WaitVBlank:
   ld [rLCDC], a
 
   ; During the first (blank) frame, initialize display registers
-  ld a, %11100100
+  ld a, DEFAULT_BG_PALETTE
+  ld [rCurrBgPalette], a
   ld [rBGP], a    ; bg palette
-  ld a, %11100010
+  ld a, DEFAULT_OBJ_PALETTE
   ld [rOBP0], a   ; obj 0 palette
   cpl ; invert a
   ld [rOBP1], a   ; obj 1 palette (usually inverted of obj 0)
@@ -172,7 +179,9 @@ WaitVBlank:
   ; Init variables
   xor a
   ld [rAnimCounter], a
+  ld [rResetAnimCounter], a
   ld [rCursorIndex], a
+  ld [rFadeCounter], a
   ld [rScreen], a
   ld [rScreenState], a
   call InitEngineVariables
@@ -223,14 +232,46 @@ UpdateTitleScreen:
   draw_text StrMenu2, 3, 13
   draw_text StrMenu3, 3, 14
   call DrawTitleCursor
-  ; TODO: reset BG palette
+
+  ld a, %00000000
+  ld [rBGP], a    ; bg palette
+  ld a, 4         ; start from offset 4-palettes, then 3, 2, 1
+  ld [rFadeCounter], a
 
   ld a, STATE_TITLE_FADE_IN
   ld [rScreenState], a
   jp GameLoop
 
 .fadein:
-  ; TODO: animate palette
+  ld a, [rAnimCounter]
+  or a
+  jp nz, GameLoop
+  ld a, [rFadeCounter]
+  cp 0
+  jr z, .fadeinDone
+  push bc
+    push af
+      ld b, a ; B = rFadeCounter
+      ld a, DEFAULT_BG_PALETTE
+      ld c, a ; C = DEFAULT_BG_PALETTE
+.shiftPaletteCheck:
+      dec b ; decrement rFadeCounter
+      jr z, .shiftPaletteDone
+.shiftPalette:
+      sla c
+      sla c
+      jr .shiftPaletteCheck
+.shiftPaletteDone:
+      ld a, c
+      ld [rBGP], a
+    pop af
+    dec a
+    ld [rFadeCounter], a
+  pop bc
+  ld a, 1
+  ld [rResetAnimCounter], a
+  jp GameLoop
+.fadeinDone:
   ld a, STATE_TITLE_ACTIVE
   ld [rScreenState], a
   jp GameLoop
@@ -240,8 +281,10 @@ UpdateTitleScreen:
   check_pressed INPUT_DPAD_DOWN, nz, .moveCursorDown
   check_pressed INPUT_DPAD_UP, nz, .moveCursorUp
   check_pressed INPUT_BTN_A, nz, .startGame
+  ; ld a, [rAnimCounter]
+  ; and 1
+  ; call z, SetBGPalette1
   jp GameLoop
-
 .moveCursorDown:
   ld a, [rCursorIndex]
   inc a
@@ -341,12 +384,22 @@ VblankInterrupt:
     ld a, 1
     ld [rCanUpdate], a
 
+    ; Counts down to zero and stays zero until it is reset
+    ld a, [rResetAnimCounter]
+    or a
+    jr z, .updateCounter
+.resetCounter:
+    xor a
+    ld [rResetAnimCounter], a
+    ld a, ANIM_FPS
+    ld [rAnimCounter], a
+.updateCounter:
     ld a, [rAnimCounter]
     or a
-    jr z, .skip
+    jr z, .done
     dec a
     ld [rAnimCounter], a
-.skip
+.done
   pop af
   jp _HRAM ; DMA function, ends with reti
 
