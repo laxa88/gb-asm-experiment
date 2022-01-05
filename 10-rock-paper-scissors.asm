@@ -136,14 +136,10 @@ EntryPoint:
   z_ldir
 
   ; Do not turn the LCD off outside of VBlank
-WaitVBlank:
-  ld a, [rLY]
-  cp 144
-  jp c, WaitVBlank
+  call WaitVBlank
 
   ; Turn the LCD off
-  xor a
-  ld [rLCDC], a
+  call TurnOffScreen
 
   ld de, MySpriteSheet
   ld hl, $8800
@@ -306,7 +302,6 @@ UpdateTitleScreen:
   call DrawTitleCursor
   jp GameLoop
 .startGame:
-  call ClearTiles
   ; TODO: set game mode (1/3/5 rounds)
 
   ; Clear cursor sprite
@@ -359,7 +354,7 @@ UpdateTitleScreen:
   ld [rResetAnimCounter], a
   jp GameLoop
 .fadeoutDone:
-  ; TODO clear screen
+  call ClearScreen
 
   ld a, STATE_GAME_INIT
   ld [rScreenState], a
@@ -371,6 +366,7 @@ UpdateTitleScreen:
 
 UpdateGameScreen:
 .init:
+  ; TODO
   jp GameLoop
 .fadein:
   jp GameLoop
@@ -428,7 +424,17 @@ DrawTitleCursor:
   pop af
   ret
 
-SECTION "Global functions", ROM0
+ClearScreen:
+  ; Turn the LCD off
+  call WaitVBlank
+  call TurnOffScreen
+
+  call ClearTiles
+
+  ; Turn the LCD on
+  ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
+  ld [rLCDC], a
+  ret
 
 VblankInterrupt:
   push af

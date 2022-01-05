@@ -49,6 +49,20 @@ InitEngineVariables:
   pop af
   ret
 
+; Destroys A
+WaitVBlank:
+  ld a, [rLY]
+  cp 144
+  jr c, WaitVBlank
+  ret
+
+; Destroys A
+TurnOffScreen:
+  xor a
+  ld [rLCDC], a
+  ret
+
+
 ; At beginning of program, this is copied to $ff80 (available address for DMA)
 ; Every time vblank occurs at $0040, the code will jump to $ff80, and calls this.
 ; It will load the hi-byte (e.g. $c0) of _RAM ($c000) into rDMA ($ff46) to trigger
@@ -223,27 +237,32 @@ DrawTile:
   pop hl
   ret
 
+; Note: Don't forget to wait for VBlank before clearing tiles,
+; otherwise some tiles will not be updated at read-only intervals.
+;
 ; Use to clear BG layer, e.g. when transitioning between screens
 ; TODO: It is heavy to clear the entire BG map, consider only clearing
 ; the tiles within the viewport.
 ClearTiles:
   push af
   push bc
+  push de
   push hl
-    xor a
+    ld a, 32
     ld b, a
     ld c, a
+    ld d, a
     ld hl, $9800
+    xor a
 .loop:
     ld [hli], a
-    inc c
-    cp 32
+    dec c
     jr nz, .loop
-    ld c, a
-    inc b
-    cp 32
+    ld c, d ; reset C
+    dec b
     jr nz, .loop
   pop hl
+  pop de
   pop bc
   pop af
   ret
