@@ -81,7 +81,7 @@ rAnimCounter: db
 rResetAnimCounter: db
 rCursorIndex: db
 rFadeCounter: db
-rCurrBgPalette: db
+rGameRounds: db
 rScreen: db
 rScreenState: db
 
@@ -151,9 +151,7 @@ EntryPoint:
   ld [rLCDC], a
 
   ; During the first (blank) frame, initialize display registers
-  ld a, DEFAULT_BG_PALETTE
-  ld [rCurrBgPalette], a
-  ld [rBGP], a    ; bg palette
+  call ResetBGPalette
   ld a, DEFAULT_OBJ_PALETTE
   ld [rOBP0], a   ; obj 0 palette
   cpl ; invert a
@@ -302,7 +300,22 @@ UpdateTitleScreen:
   call DrawTitleCursor
   jp GameLoop
 .startGame:
-  ; TODO: set game mode (1/3/5 rounds)
+  ld a, [rCursorIndex]
+.startGameCheckRound5:
+  cp 2
+  jr nz, .startGameCheckRound3
+  ld a, 5
+  jr .startGameSetRounds
+.startGameCheckRound3:
+  cp 1
+  jr nz, .startGameCheckRound1
+  ld a, 3
+  jr .startGameSetRounds
+.startGameCheckRound1:
+  ld a, 1
+.startGameSetRounds:
+  ld [rGameRounds], a
+
 
   ; Clear cursor sprite
   xor a       ; sprite number
@@ -355,6 +368,7 @@ UpdateTitleScreen:
   jp GameLoop
 .fadeoutDone:
   call ClearScreen
+  call ResetBGPalette
 
   ld a, STATE_GAME_INIT
   ld [rScreenState], a
@@ -366,7 +380,12 @@ UpdateTitleScreen:
 
 UpdateGameScreen:
 .init:
-  ; TODO
+  ld a, 2
+  ld e, a
+  ld d, a
+  ld a, [rGameRounds]
+  call DrawDigit
+
   jp GameLoop
 .fadein:
   jp GameLoop
@@ -390,6 +409,11 @@ UpdateGameOverScreen:
 
 
 SECTION "Game functions", ROM0
+
+ResetBGPalette:
+  ld a, DEFAULT_BG_PALETTE
+  ld [rBGP], a    ; bg palette
+  ret
 
 ; Draw title cursor at:
 ; - rCursorIndex = 0/1/2 position

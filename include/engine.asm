@@ -177,7 +177,7 @@ DrawChar:
 
 ; Draws 2-digit decimals:
 ; - DE = YX position
-; - A = 2-digit decimals ($00 - $99)
+; - A = 2-digit decimals written in hex ($00 - $99)
 Draw2Decimals:
   push af
   push bc
@@ -200,6 +200,9 @@ Draw2Decimals:
   pop af
   ret
 
+; Draws a digit:
+; - DE = YX position
+; - A = digit (0 - 9)
 DrawDigit:
   push af
     add 144         ; offset to start of "0" digit
