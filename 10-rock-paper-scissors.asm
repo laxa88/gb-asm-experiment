@@ -146,6 +146,16 @@ EntryPoint:
   ld bc, MySpriteSheetEnd - MySpriteSheet
   call CopyData
 
+  ld de, TitleScreen
+  ld hl, $9000
+  ld bc, TitleScreenEnd - TitleScreen
+  call CopyData
+
+  ld de, TitleScreenTilemap
+  ld hl, $9800
+  ld bc, TitleScreenTilemapEnd - TitleScreenTilemap
+  call CopyData
+
   ; Turn the LCD on
   ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
   ld [rLCDC], a
@@ -505,7 +515,11 @@ StrLose: db "You lost...", 255
 
 SECTION "Tilemap", ROM0
 
-TitleScreenMap:
-  ; TODO
-TitleScreenMapEnd:
+TitleScreen:
+  incbin "./resource/rock-paper-scissors-titlescreen.2bpp"
+TitleScreenEnd:
+
+TitleScreenTilemap:
+  incbin "./resource/rock-paper-scissors-titlescreen.tilemap"
+TitleScreenTilemapEnd:
 
