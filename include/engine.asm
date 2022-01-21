@@ -58,6 +58,7 @@ WaitVBlank:
 
 ; Destroys A
 TurnOffScreen:
+  call WaitVBlank
   xor a
   ld [rLCDC], a
   ret

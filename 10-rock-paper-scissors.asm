@@ -135,10 +135,6 @@ EntryPoint:
   ld bc, $a0 - 1      ; 159 loops (160 times)
   z_ldir
 
-  ; Do not turn the LCD off outside of VBlank
-  call WaitVBlank
-
-  ; Turn the LCD off
   call TurnOffScreen
 
   ld de, MySpriteSheet
@@ -151,14 +147,7 @@ EntryPoint:
   ld bc, TitleScreenEnd - TitleScreen
   call CopyData
 
-  ld de, TitleScreenTilemap
-  ld hl, $9800
-  ld bc, TitleScreenTilemapEnd - TitleScreenTilemap
-  call CopyData
-
-  ; Turn the LCD on
-  ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
-  ld [rLCDC], a
+  call TurnOnScreen
 
   ; During the first (blank) frame, initialize display registers
   call ResetBGPalette
@@ -234,6 +223,13 @@ UpdateTitleScreen:
   jp z, .fadeout
 
 .init:
+  call TurnOffScreen
+
+  ld de, TitleScreenTilemap
+  ld hl, $9800
+  ld bc, TitleScreenTilemapEnd - TitleScreenTilemap
+  call CopyData
+
   draw_text StrMenu1, 3, 12
   draw_text StrMenu2, 3, 13
   draw_text StrMenu3, 3, 14
@@ -242,6 +238,8 @@ UpdateTitleScreen:
   ld [rBGP], a    ; bg palette
   ld a, 4         ; fade 4 palette cycles
   ld [rFadeCounter], a
+
+  call TurnOnScreen
 
   ld a, STATE_TITLE_FADE_IN
   ld [rScreenState], a
@@ -278,7 +276,6 @@ UpdateTitleScreen:
   jp GameLoop
 .fadeinDone:
   call DrawTitleCursor
-  ; TODO call DrawTitleLogo
   ld a, STATE_TITLE_ACTIVE
   ld [rScreenState], a
   jp GameLoop
@@ -458,16 +455,16 @@ DrawTitleCursor:
   pop af
   ret
 
-ClearScreen:
-  ; Turn the LCD off
-  call WaitVBlank
-  call TurnOffScreen
-
-  call ClearTiles
-
-  ; Turn the LCD on
+; Screen flags are custom to the game, so cannot be in engine.asm
+TurnOnScreen:
   ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
   ld [rLCDC], a
+  ret
+
+ClearScreen:
+  call TurnOffScreen
+  call ClearTiles
+  call TurnOnScreen
   ret
 
 VblankInterrupt:
