@@ -513,10 +513,10 @@ StrLose: db "You lost...", 255
 SECTION "Tilemap", ROM0
 
 TitleScreen:
-  incbin "./resource/rock-paper-scissors-titlescreen.2bpp"
+  incbin "./resource/rps-title.2bpp"
 TitleScreenEnd:
 
 TitleScreenTilemap:
-  incbin "./resource/rock-paper-scissors-titlescreen.tilemap"
+  incbin "./resource/rps-title.tilemap"
 TitleScreenTilemapEnd:
 
