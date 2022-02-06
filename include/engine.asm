@@ -171,7 +171,10 @@ DrawString:
 
 DrawChar:
   push af
-    add 96          ; offset to start of ASCII table (32)
+    ; This assumes character address starts from $80 (shared
+    ; address for both BG and OBJ).
+    ; offset to start of ASCII table (32 = " ", 33 = "!", etc.)
+    add 96
     call DrawTile
   pop af
   ret

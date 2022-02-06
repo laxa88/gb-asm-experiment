@@ -24,10 +24,12 @@ Run `make.bat`, which should build and open the `.gb` game in BGB emulator.
 ```
 // -T = also generates .tilemap file
 // -u = unique tiles (remove duplicate tiles in output 2bpp file)
-rgbgfx.exe -T -u -o out.2bpp in.png
+rgbgfx.exe -T -o rps-text.2bpp rps-text.png
+rgbgfx.exe -T -u -o rps-title.2bpp rps-title.png
+rgbgfx.exe -T -u -o rps-hands.2bpp rps-hands.png
 ```
 
-- (optional) Use [Tilemapstudio](https://github.com/Rangi42/tilemap-studio) to visualise the output. Drag-n-drop the `.2bpp` and `.tilemap` files into Tilemapstudio and adjust as necessary. Then `Save As...` the resulting `.tilemap` file, which you can use in the next step.
+- Use [Tilemapstudio](https://github.com/Rangi42/tilemap-studio) to visualise the output. Drag-n-drop the `.2bpp` and `.tilemap` files into Tilemapstudio and adjust as necessary. Then `Save As...` the resulting `.tilemap` file, which you can use in the next step. The visible area is 20x18, but the full BG map is 32x32, so make sure to adjust the width to `32` in Tilemapstudio and save the `.tilemap` before using it as a static title image in the game.
 
 - Import the `.2bpp` and `.tilemap` files in the ASM code normally, since they're all just binaries.
 

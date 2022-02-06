@@ -137,14 +137,14 @@ EntryPoint:
 
   call TurnOffScreen
 
-  ld de, MySpriteSheet
+  ld de, ImgText
   ld hl, $8800
-  ld bc, MySpriteSheetEnd - MySpriteSheet
+  ld bc, ImgTextEnd - ImgText
   call CopyData
 
-  ld de, TitleScreen
+  ld de, ImgTitle
   ld hl, $9000
-  ld bc, TitleScreenEnd - TitleScreen
+  ld bc, ImgTitleEnd - ImgTitle
   call CopyData
 
   call TurnOnScreen
@@ -202,7 +202,7 @@ GameLoop:
   ; Jump to appropriate loop based on screen state
   ld a, [rScreen]
   cp SCREEN_TITLE
-  jp z, UpdateTitleScreen
+  jp z, UpdateImgTitle
   cp SCREEN_GAME
   jp z, UpdateGameScreen
   cp SCREEN_GAMEOVER
@@ -211,7 +211,7 @@ GameLoop:
 
 
 
-UpdateTitleScreen:
+UpdateImgTitle:
   ld a, [rScreenState]
   cp STATE_TITLE_INIT
   jp z, .init
@@ -225,9 +225,9 @@ UpdateTitleScreen:
 .init:
   call TurnOffScreen
 
-  ld de, TitleScreenTilemap
+  ld de, ImgTitleTilemap
   ld hl, $9800
-  ld bc, TitleScreenTilemapEnd - TitleScreenTilemap
+  ld bc, ImgTitleTilemapEnd - ImgTitleTilemap
   call CopyData
 
   draw_text StrMenu1, 3, 12
@@ -493,11 +493,6 @@ VblankInterrupt:
 
 SECTION "Data and constants", ROM0
 
-; Binaries
-MySpriteSheet:
-  incbin "./resource/sprite-sheet.bin"
-MySpriteSheetEnd:
-
 ; Constants
 StrMenu1: db "Play once", 255
 StrMenu2: db "Play best of 3", 255
@@ -512,11 +507,19 @@ StrLose: db "You lost...", 255
 
 SECTION "Tilemap", ROM0
 
-TitleScreen:
-  incbin "./resource/rps-title.2bpp"
-TitleScreenEnd:
+ImgText:
+  incbin "./resource/rps-text.2bpp"
+ImgTextEnd:
 
-TitleScreenTilemap:
+ImgTitle:
+  incbin "./resource/rps-title.2bpp"
+ImgTitleEnd:
+
+ImgTitleTilemap:
   incbin "./resource/rps-title.tilemap"
-TitleScreenTilemapEnd:
+ImgTitleTilemapEnd:
+
+ImgHands:
+  incbin "./resource/rps-hands.2bpp"
+ImgHandsEnd:
 
