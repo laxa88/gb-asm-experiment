@@ -294,29 +294,9 @@ UpdateImgTitle:
 
 .active:
   call ReadInput
-  check_pressed INPUT_DPAD_DOWN, nz, .moveCursorDown
-  check_pressed INPUT_DPAD_UP, nz, .moveCursorUp
+  check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
   check_pressed INPUT_BTN_A, nz, .startGame
-  jp GameLoop
-.moveCursorDown:
-  ld a, [rCursorIndex]
-  inc a
-  cp 3
-  jp nz, .moveCursorDownOk
-  xor a ; wrap back to index 0
-.moveCursorDownOk:
-  ld [rCursorIndex], a
-  call DrawCursor
-  jp GameLoop
-.moveCursorUp:
-  ld a, [rCursorIndex]
-  dec a
-  cp 255 ; -1 is also known as 255
-  jp nz, .moveCursorUpOk
-  ld a, 2 ; wrap back to index 2
-.moveCursorUpOk:
-  ld [rCursorIndex], a
-  call DrawCursor
   jp GameLoop
 .startGame:
   ld a, [rCursorIndex]
@@ -494,6 +474,28 @@ UpdateGameOverScreen:
 
 
 SECTION "Game functions", ROM0
+
+MoveCursorDown:
+  ld a, [rCursorIndex]
+  inc a
+  cp 3
+  jp nz, .moveCursorDownOk
+  xor a ; wrap back to index 0
+.moveCursorDownOk:
+  ld [rCursorIndex], a
+  call DrawCursor
+  jp GameLoop
+
+MoveCursorUp:
+  ld a, [rCursorIndex]
+  dec a
+  cp 255 ; -1 is also known as 255
+  jp nz, .moveCursorUpOk
+  ld a, 2 ; wrap back to index 2
+.moveCursorUpOk:
+  ld [rCursorIndex], a
+  call DrawCursor
+  jp GameLoop
 
 ResetBGPalette:
   ld a, DEFAULT_BG_PALETTE
