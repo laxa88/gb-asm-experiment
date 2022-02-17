@@ -262,6 +262,8 @@ DrawTile:
 ; Use to clear BG layer, e.g. when transitioning between screens
 ; TODO: It is heavy to clear the entire BG map, consider only clearing
 ; the tiles within the viewport.
+;
+; - E = the tile to clear with, e.g. $00 or $80
 ClearTiles:
   push af
   push bc
@@ -272,7 +274,7 @@ ClearTiles:
     ld c, a
     ld d, a
     ld hl, $9800
-    xor a
+    ld a, e
 .loop:
     ld [hli], a
     dec c

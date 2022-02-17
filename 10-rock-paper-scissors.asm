@@ -487,6 +487,8 @@ TurnOnScreen:
 
 ClearScreen:
   call TurnOffScreen
+  ld a, $80
+  ld e, a
   call ClearTiles
   call TurnOnScreen
   ret
