@@ -454,6 +454,9 @@ UpdateGameScreen:
   jp GameLoop
 
 .active:
+  call ReadInput
+  check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
   jp GameLoop
 
 .fadeout:
@@ -632,3 +635,10 @@ ImgHands:
   incbin "./resource/rps-hands.2bpp"
 ImgHandsEnd:
 
+; TODO map positions for:
+; left side scissors
+; left side paper
+; left side rock
+; right side scissors
+; right side paper
+; right side rock
