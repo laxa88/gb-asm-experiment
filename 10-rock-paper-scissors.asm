@@ -56,11 +56,14 @@ DEF STATE_TITLE_FADE_IN EQU 1
 DEF STATE_TITLE_ACTIVE EQU 2
 DEF STATE_TITLE_FADE_OUT EQU 3
 
+DEF GAME_CURSOR_ORI_X EQU 5
+DEF GAME_CURSOR_ORI_Y EQU 15
 DEF STATE_GAME_INIT EQU 0
 DEF STATE_GAME_FADE_IN EQU 1
-DEF STATE_GAME_PLAYER_TURN EQU 2
-DEF STATE_GAME_SHOW_ROUND_RESULT EQU 3
-DEF STATE_GAME_FADE_OUT EQU 4
+DEF STATE_GAME_ACTIVE EQU 2
+DEF STATE_GAME_PLAYER_TURN EQU 3
+DEF STATE_GAME_SHOW_ROUND_RESULT EQU 4
+DEF STATE_GAME_FADE_OUT EQU 5
 
 DEF STATE_GAMEOVER_INIT EQU 0
 DEF STATE_GAMEOVER_FADE_IN EQU 1
@@ -395,18 +398,84 @@ UpdateImgTitle:
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 UpdateGameScreen:
-.init:
-  ld a, 2
-  ld e, a
-  ld d, a
-  ld a, [rGameRounds]
-  call DrawDigit
+  ld a, [rScreenState]
+  cp STATE_GAME_INIT
+  jp z, .init
+  cp STATE_GAME_FADE_IN
+  jp z, .fadein
+  cp STATE_GAME_ACTIVE
+  jp z, .active
+  cp STATE_GAME_FADE_OUT
+  jp z, .fadeout
 
+.init:
+  call TurnOffScreen
+
+  ld a, GAME_CURSOR_ORI_X
+  ld [rCursorX], a
+  ld a, GAME_CURSOR_ORI_Y
+  ld [rCursorY], a
+
+  ld de, ImgHands
+  ld hl, $9000
+  ld bc, ImgHandsEnd - ImgHands
+  call CopyData
+
+  ; TODO draw the initial hand position
+
+  draw_text StrPrompt, 2, 11
+  draw_text StrRock, 5, 13
+  draw_text StrPaper, 5, 14
+  draw_text StrScissors, 5, 15
+
+  ld a, %00000000
+  ld [rBGP], a    ; bg palette
+  ld a, 4         ; fade 4 palette cycles
+  ld [rFadeCounter], a
+
+  call TurnOnScreen
+
+  ld a, STATE_GAME_FADE_IN
+  ld [rScreenState], a
   jp GameLoop
 .fadein:
+  ld a, [rAnimCounter]
+  or a
+  jp nz, GameLoop
+  ld a, [rFadeCounter]
+  cp 0
+  jr z, .fadeinDone
+  push bc
+    push af
+      ld b, a ; B = rFadeCounter
+      ld a, DEFAULT_BG_PALETTE
+      ld c, a ; C = DEFAULT_BG_PALETTE
+.fadeinPaletteCheck:
+      dec b ; decrement rFadeCounter
+      jr z, .fadeinPaletteDone
+.fadeinPalette:
+      sla c
+      sla c
+      jr .fadeinPaletteCheck
+.fadeinPaletteDone:
+      ld a, c
+      ld [rBGP], a
+    pop af
+    dec a
+    ld [rFadeCounter], a
+  pop bc
+  ld a, 1
+  ld [rResetAnimCounter], a
   jp GameLoop
+.fadeinDone:
+  call DrawCursor
+  ld a, STATE_GAME_ACTIVE
+  ld [rScreenState], a
+  jp GameLoop
+
 .active:
   jp GameLoop
+
 .fadeout:
   jp GameLoop
 
@@ -532,6 +601,7 @@ StrMenu1: db "Play once", 255
 StrMenu2: db "Play best of 3", 255
 StrMenu3: db "Play best of 5", 255
 
+StrPrompt: db "Your move?", 255
 StrPaper: db "Paper", 255
 StrRock: db "Rock", 255
 StrScissors: db "Scissors", 255
