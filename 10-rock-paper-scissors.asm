@@ -382,6 +382,7 @@ UpdateImgTitle:
   ld [rResetAnimCounter], a
   jp GameLoop
 .fadeoutDone:
+  call ResetCursorIndex
   call ClearScreen
   call ResetBGPalette
 
@@ -428,6 +429,13 @@ SECTION "Game functions", ROM0
 ResetBGPalette:
   ld a, DEFAULT_BG_PALETTE
   ld [rBGP], a    ; bg palette
+  ret
+
+ResetCursorIndex:
+  push af
+    xor a
+    ld [rCursorIndex], a
+  pop af
   ret
 
 ; Draw cursor at:
