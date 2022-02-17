@@ -37,6 +37,18 @@ rCharY: db
 
 SECTION "Common functions", ROM0
 
+; Multiplies 2 numbers
+; - B, C = values to multiply
+; - A = multiplied result
+; - Destroys AF, BC
+Multiply:
+    xor a
+.rep:
+    add c
+    dec b
+    jr nz, .rep
+  ret
+
 InitEngineVariables:
   push af
     xor a
