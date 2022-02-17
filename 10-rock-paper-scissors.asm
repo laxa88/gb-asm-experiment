@@ -49,6 +49,8 @@ DEF SCREEN_TITLE EQU 0
 DEF SCREEN_GAME EQU 1
 DEF SCREEN_GAMEOVER EQU 2
 
+DEF TITLE_CURSOR_X EQU 3
+DEF TITLE_CURSOR_Y EQU 14
 DEF STATE_TITLE_INIT EQU 0
 DEF STATE_TITLE_FADE_IN EQU 1
 DEF STATE_TITLE_ACTIVE EQU 2
@@ -79,6 +81,8 @@ rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 rCanUpdate: db
 rAnimCounter: db
 rResetAnimCounter: db
+rCursorX: db
+rCursorY: db
 rCursorIndex: db
 rFadeCounter: db
 rGameRounds: db
@@ -179,6 +183,11 @@ EntryPoint:
   ld [rScreenState], a    ; STATE_TITLE_INIT
   call InitEngineVariables
 
+  ld a, TITLE_CURSOR_X
+  ld [rCursorX], a
+  ld a, TITLE_CURSOR_Y
+  ld [rCursorY], a
+
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
   ld [rAUDENA], a
@@ -209,7 +218,7 @@ GameLoop:
   jp z, UpdateGameOverScreen
   ; Default fallthrough to title screen
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 UpdateImgTitle:
   ld a, [rScreenState]
@@ -275,7 +284,7 @@ UpdateImgTitle:
   ld [rResetAnimCounter], a
   jp GameLoop
 .fadeinDone:
-  call DrawTitleCursor
+  call DrawCursor
   ld a, STATE_TITLE_ACTIVE
   ld [rScreenState], a
   jp GameLoop
@@ -294,7 +303,7 @@ UpdateImgTitle:
   xor a ; wrap back to index 0
 .moveCursorDownOk:
   ld [rCursorIndex], a
-  call DrawTitleCursor
+  call DrawCursor
   jp GameLoop
 .moveCursorUp:
   ld a, [rCursorIndex]
@@ -304,7 +313,7 @@ UpdateImgTitle:
   ld a, 2 ; wrap back to index 2
 .moveCursorUpOk:
   ld [rCursorIndex], a
-  call DrawTitleCursor
+  call DrawCursor
   jp GameLoop
 .startGame:
   ld a, [rCursorIndex]
@@ -322,7 +331,6 @@ UpdateImgTitle:
   ld a, 1
 .startGameSetRounds:
   ld [rGameRounds], a
-
 
   ; Clear cursor sprite
   xor a       ; sprite number
@@ -383,7 +391,7 @@ UpdateImgTitle:
   ld [rScreen], a
   jp GameLoop
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 UpdateGameScreen:
 .init:
@@ -401,7 +409,7 @@ UpdateGameScreen:
 .fadeout:
   jp GameLoop
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 UpdateGameOverScreen:
 .init:
@@ -422,15 +430,23 @@ ResetBGPalette:
   ld [rBGP], a    ; bg palette
   ret
 
-; Draw title cursor at:
+; Draw cursor at:
+; - rCursorX = initial X pos of cursor at index 0
+; - rCursorY = initial Y pos of cursor at index 0
 ; - rCursorIndex = 0/1/2 position
-DrawTitleCursor:
+DrawCursor:
   push af
   push bc
   push de
   push hl
-    ld a, 8*3
-    ld b, a       ; X pos
+    push bc
+      ld a, [rCursorX]
+      ld b, a
+      ld a, 8
+      ld c, a
+      call Multiply
+    pop bc
+    ld b, a       ; X-pos for SetSprite
 
     ld a, [rCursorIndex]
     cp 0
@@ -442,8 +458,16 @@ DrawTitleCursor:
     dec d
     jr nz, .loop
 .setYPos:
-    add 8*14      ; offset A by 14 tiles * 8 pixels
-    ld c, a       ; Y pos
+    ld e, a ; save the Y-offset
+    push bc
+      ld a, [rCursorY]
+      ld b, a
+      ld a, 8
+      ld c, a
+      call Multiply
+    pop bc
+    add e ; add origin Y-pos with Y-offset
+    ld c, a       ; Y-pos for SetSprite
 
     ld e, $bb     ; cursor tile
     ld h, 0       ; sprite palette
@@ -497,11 +521,14 @@ SECTION "Data and constants", ROM0
 StrMenu1: db "Play once", 255
 StrMenu2: db "Play best of 3", 255
 StrMenu3: db "Play best of 5", 255
+
 StrPaper: db "Paper", 255
 StrRock: db "Rock", 255
 StrScissors: db "Scissors", 255
+
 StrBeats: db "beats", 255
 StrLosesTo: db "loses to", 255
+
 StrWin: db "You won!", 255
 StrLose: db "You lost...", 255
 
