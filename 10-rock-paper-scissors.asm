@@ -126,7 +126,7 @@ EntryPoint:
 
   ; Shut down audio circuitry
   xor a
-  ld [rNR52], a
+  ld [rAUDENA], a
 
   ; Copy vblank interrupt handler to HRAM
   ld bc, DMACopyEnd - DMACopy     ; length of code
@@ -196,7 +196,7 @@ EntryPoint:
   ld [rAUDENA], a
   ld a, $FF           ; turn on all speakers (stereo)
   ld [rAUDTERM], a
-  ld a, %00000000     ; 0111 0111 (max volume for SO2 and SO1)
+  ld a, %11111111     ; 0111 0111 (max volume for SO2 and SO1)
   ld [rAUDVOL], a
 
   ; Init music
@@ -210,6 +210,8 @@ GameLoop:
   jr nz, GameLoop         ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
   xor a
   ld [rCanUpdate], a
+
+  ; call PlayMusic
 
   ; Jump to appropriate loop based on screen state
   ld a, [rScreen]
@@ -301,6 +303,7 @@ UpdateImgTitle:
   check_pressed INPUT_BTN_A, nz, .startGame
   jp GameLoop
 .startGame:
+  call PlaySfxConfirm
   ld a, [rCursorIndex]
 .startGameCheckRound5:
   cp 2
@@ -520,7 +523,50 @@ UpdateGameOverScreen:
 
 SECTION "Game functions", ROM0
 
+PlayMusic:
+  push af
+  push hl
+  push bc
+  push de
+    call hUGE_dosound
+  pop de
+  pop bc
+  pop hl
+  pop af
+  ret
+
+PlaySfxSelect:
+  push af
+    ld a, $64
+    ld [rNR10], a
+    ld a, $01
+    ld [rNR11], a
+    ld a, $43
+    ld [rNR12], a
+    ld a, $08
+    ld [rNR13], a
+    ld a, $87
+    ld [rNR14], a
+  pop af
+  ret
+
+PlaySfxConfirm:
+  push af
+    ld a, $45
+    ld [rNR10], a
+    ld a, $80
+    ld [rNR11], a
+    ld a, $a6
+    ld [rNR12], a
+    ld a, $ce
+    ld [rNR13], a
+    ld a, $86
+    ld [rNR14], a
+  pop af
+  ret
+
 MoveCursorDown:
+  call PlaySfxSelect
   ld a, [rCursorIndex]
   inc a
   cp 3
@@ -532,6 +578,7 @@ MoveCursorDown:
   jp GameLoop
 
 MoveCursorUp:
+  call PlaySfxSelect
   ld a, [rCursorIndex]
   dec a
   cp 255 ; -1 is also known as 255

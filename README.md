@@ -33,6 +33,31 @@ rgbgfx.exe -T -u -o rps-hands.2bpp rps-hands.png
 
 - Import the `.2bpp` and `.tilemap` files in the ASM code normally, since they're all just binaries.
 
+### SFX workflow
+
+- Download ZIP file or clone repository from: https://github.com/Zal0/GBSoundDemo
+- Open the `.gb` file using an emulator (e.g. BGB emulator)
+- Tinker with the values until you find a sound you like
+- Copy the values into your game and call it whenever you want, e.g.
+
+```
+; The values provided for NR10-14: 45, 80, A6, CE, 86
+PlaySfx:
+  push af
+    ld a, $45
+    ld [rNR10], a
+    ld a, $80
+    ld [rNR11], a
+    ld a, $a6
+    ld [rNR12], a
+    ld a, $ce
+    ld [rNR13], a
+    ld a, $86
+    ld [rNR14], a
+  pop af
+  ret
+```
+
 ### Notes
 
 Open `.gbr` files with [GameBoy Tile Designer](http://www.devrs.com/gb/hmgd/gbtd.html)
