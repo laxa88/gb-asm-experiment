@@ -251,6 +251,8 @@ UpdateImgTitle:
   ld a, 4         ; fade 4 palette cycles
   ld [rFadeCounter], a
 
+  ; TODO play title screen music
+
   call TurnOnScreen
 
   ld a, STATE_TITLE_FADE_IN
@@ -402,11 +404,12 @@ UpdateGameScreen:
   call CopyData
 
   ; TODO draw the initial hand position
+  ; TODO play game music
 
   draw_text StrPrompt, 2, 11
-  draw_text StrRock, 5, 13
-  draw_text StrPaper, 5, 14
-  draw_text StrScissors, 5, 15
+  draw_text StrRock, 5, 13      ; option 0
+  draw_text StrPaper, 5, 14     ; option 1
+  draw_text StrScissors, 5, 15  ; option 2
 
   ld a, %00000000
   ld [rBGP], a    ; bg palette
@@ -454,10 +457,49 @@ UpdateGameScreen:
   jp GameLoop
 
 .active:
+  ; TODO
+  ; show selected hand image based on rCursorIndex
+
   call ReadInput
   check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
   check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
+  ; check_pressed INPUT_BTN_A, nz, .selectMove
   jp GameLoop
+; .selectMove:
+  ; TODO
+  ; - play selected sound
+  ; - delay 100ms
+  ; - clear clear screen
+  ; - delay 100ms
+  ; - show message "Rock... Paper... Scissors... Shoot!"
+  ; - show opponent's hand
+  ; - delay delay 1000ms
+  ; - show message "Shucks! / Yeah!"
+  ; - delay 3000ms
+  ; - update score
+  ; - (if game not yet ended) jump back to .active
+  ; - (if game ended) delay 500ms
+  ;   - clear screen
+  ;   - show result message "You win/lose!"
+  ;   - play fanfare sound
+  ;   - delay 1000ms
+
+  ; Clear cursor sprite
+  ; xor a       ; sprite number
+  ; ld b, a     ; X
+  ; ld c, a     ; Y
+  ; ld e, a     ; cursor tile
+  ; ld h, a     ; sprite palette
+  ; call SetSprite
+
+  ; ld a, DEFAULT_BG_PALETTE
+  ; ld [rBGP], a    ; bg palette
+  ; xor a           ; fade 0 to 4 palette cycles
+  ; ld [rFadeCounter], a
+
+  ; ld a, STATE_TITLE_FADE_OUT
+  ; ld [rScreenState], a
+  ; jp GameLoop
 
 .fadeout:
   jp GameLoop
