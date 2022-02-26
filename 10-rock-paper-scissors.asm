@@ -541,7 +541,7 @@ PlaySfxSelect:
     ld [rNR10], a
     ld a, $01
     ld [rNR11], a
-    ld a, $43
+    ld a, $f3
     ld [rNR12], a
     ld a, $08
     ld [rNR13], a
@@ -556,7 +556,7 @@ PlaySfxConfirm:
     ld [rNR10], a
     ld a, $80
     ld [rNR11], a
-    ld a, $a6
+    ld a, $f6
     ld [rNR12], a
     ld a, $ce
     ld [rNR13], a
