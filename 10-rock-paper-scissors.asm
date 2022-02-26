@@ -304,8 +304,7 @@ UpdateImgTitle:
     dec a
     ld [rFadeCounter], a
   pop bc
-  ld a, 1
-  ld [rResetAnimCounter], a
+  call FlagAnimCounter
   jp GameLoop
 .fadeinDone:
   call DrawCursor
@@ -382,8 +381,7 @@ UpdateImgTitle:
     inc a
     ld [rFadeCounter], a
   pop bc
-  ld a, 1
-  ld [rResetAnimCounter], a
+  call FlagAnimCounter
   jp GameLoop
 .fadeoutDone:
   call ResetCursorIndex
@@ -403,6 +401,7 @@ UpdateGameScreen:
   jp z, .init
   cp STATE_GAME_FADE_IN
   jp z, .fadein
+
   cp STATE_GAME_ACTIVE
   jp z, .active
   cp STATE_GAME_FADE_OUT
@@ -465,8 +464,7 @@ UpdateGameScreen:
     dec a
     ld [rFadeCounter], a
   pop bc
-  ld a, 1
-  ld [rResetAnimCounter], a
+  call FlagAnimCounter
   jp GameLoop
 .fadeinDone:
   call DrawCursor
@@ -536,6 +534,13 @@ UpdateGameOverScreen:
 
 
 SECTION "Game functions", ROM0
+
+FlagAnimCounter:
+  push af
+    ld a, 1
+    ld [rResetAnimCounter], a
+  pop af
+  ret
 
 PlayMusic:
   push af
@@ -670,6 +675,7 @@ TurnOnScreen:
   ld [rLCDC], a
   ret
 
+; Turns off screen, clear tiles, then turns on screen
 ClearScreen:
   call TurnOffScreen
   ld a, $80
