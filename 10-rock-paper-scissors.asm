@@ -69,6 +69,12 @@ DEF GAME_CURSOR_ORI_Y EQU 15
 DEF STATE_GAME_INIT EQU 0
 DEF STATE_GAME_FADE_IN EQU 1
 DEF STATE_GAME_ACTIVE EQU 2
+DEF STATE_GAME_ACTIVE_STEP_1 EQU 21
+DEF STATE_GAME_ACTIVE_STEP_2 EQU 22
+DEF STATE_GAME_ACTIVE_STEP_3 EQU 23
+DEF STATE_GAME_ACTIVE_STEP_4 EQU 24
+DEF STATE_GAME_ACTIVE_STEP_5 EQU 25
+DEF STATE_GAME_ACTIVE_STEP_6 EQU 26
 DEF STATE_GAME_PLAYER_TURN EQU 3
 DEF STATE_GAME_SHOW_ROUND_RESULT EQU 4
 DEF STATE_GAME_FADE_OUT EQU 5
@@ -233,7 +239,7 @@ GameLoop:
   ; Jump to appropriate loop based on screen state
   ld a, [rScreen]
   cp SCREEN_TITLE
-  jp z, UpdateImgTitle
+  jp z, UpdateTitleScreen
   cp SCREEN_GAME
   jp z, UpdateGameScreen
   cp SCREEN_GAMEOVER
@@ -242,7 +248,7 @@ GameLoop:
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
-UpdateImgTitle:
+UpdateTitleScreen:
   ld a, [rScreenState]
   cp STATE_TITLE_INIT
   jp z, .init
@@ -404,6 +410,9 @@ UpdateGameScreen:
 
   cp STATE_GAME_ACTIVE
   jp z, .active
+  cp STATE_GAME_ACTIVE_STEP_1
+  jp z, .activeStep1
+
   cp STATE_GAME_FADE_OUT
   jp z, .fadeout
 
@@ -478,27 +487,9 @@ UpdateGameScreen:
   call ReadInput
   check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
   check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
-  ; check_pressed INPUT_BTN_A, nz, .selectMove
+  check_pressed INPUT_BTN_A, nz, .selectAction
   jp GameLoop
-; .selectMove:
-  ; TODO
-  ; - play selected sound
-  ; - delay 100ms
-  ; - clear clear screen
-  ; - delay 100ms
-  ; - show message "Rock... Paper... Scissors... Shoot!"
-  ; - show opponent's hand
-  ; - delay delay 1000ms
-  ; - show message "Shucks! / Yeah!"
-  ; - delay 3000ms
-  ; - update score
-  ; - (if game not yet ended) jump back to .active
-  ; - (if game ended) delay 500ms
-  ;   - clear screen
-  ;   - show result message "You win/lose!"
-  ;   - play fanfare sound
-  ;   - delay 1000ms
-
+.selectAction:
   ; Clear cursor sprite
   ; xor a       ; sprite number
   ; ld b, a     ; X
@@ -512,28 +503,89 @@ UpdateGameScreen:
   ; xor a           ; fade 0 to 4 palette cycles
   ; ld [rFadeCounter], a
 
-  ; ld a, STATE_TITLE_FADE_OUT
-  ; ld [rScreenState], a
-  ; jp GameLoop
+  ; - play selected sound
+  ; - delay 100ms
+  call PlaySfxConfirm
+  set_game_state STATE_GAME_ACTIVE_STEP_1
+  call DoSleep30
+  jp GameLoop
+
+.activeStep1:
+  ; - clear clear screen
+  ; - delay 100ms
+  call ClearScreen
+  call DoSleep30
+  jp GameLoop
+
+.activeStep2:
+  ; TODO
+  ; - show message "Rock... Paper... Scissors... Shoot!"
+  jp GameLoop
+
+.activeStep3:
+  ; TODO
+  ; - show opponent's hand
+  ; - delay delay 1000ms
+  jp GameLoop
+
+.activeStep4:
+  ; TODO
+  ; - show message "Shucks! / Yeah!"
+  ; - delay 3000ms
+  jp GameLoop
+
+.activeStep5:
+  ; TODO
+  ; - update score
+  ; - (if game not yet ended) jump back to .active
+  ; - (if game ended) delay 500ms, jump to next step
+  jp GameLoop
+
+.activeStep6:
+  ; TODO
+  ; - clear screen
+  ; - show result message "You win/lose!"
+  ; - play fanfare sound
+  ; - delay 1000ms
+  ; - jump to fadeout
+  jp GameLoop
 
 .fadeout:
+  ; TODO
+  ; - jump to game over screen
   jp GameLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 UpdateGameOverScreen:
 .init:
+  ; TODO
   jp GameLoop
+
 .fadein:
+  ; TODO
   jp GameLoop
+
 .active:
+  ; TODO
+  ; - show Game Over message / image
+  ; - play Game Over music
+  ; - fadeout on user input
   jp GameLoop
+
 .fadeout:
   jp GameLoop
 
-
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 
 SECTION "Game functions", ROM0
+
+DoSleep30:
+  push af
+    ld a, 30
+    ld [rSleepCounter], a
+  pop af
+  ret
 
 FlagAnimCounter:
   push af
