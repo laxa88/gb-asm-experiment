@@ -92,6 +92,7 @@ rRAM_OAM: ds 4*40 ; 40 sprites * 4 bytes
 rCanUpdate: db
 rAnimCounter: db
 rResetAnimCounter: db
+rSleepCounter: db
 rCursorX: db
 rCursorY: db
 rCursorIndex: db
@@ -188,6 +189,7 @@ EntryPoint:
   xor a
   ld [rAnimCounter], a
   ld [rResetAnimCounter], a
+  ld [rSleepCounter], a
   ld [rCursorIndex], a
   ld [rFadeCounter], a
   ld [rScreen], a         ; SCREEN_TITLE
@@ -213,13 +215,20 @@ EntryPoint:
 
 GameLoop:
   halt                ; pause game (conserves CPU power) until next interrupt
+
+  ; Only run logic every vblank interrupt so we economize on processing
   ld a, [rCanUpdate]
   cp 1
-  jr nz, GameLoop         ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
+  jr nz, GameLoop     ; if interrupt was not vblank (resets rCanUpdate), jump back up and halt
   xor a
-  ld [rCanUpdate], a
+  ld [rCanUpdate], a  ; unsets flag
 
   ; call PlayMusic
+
+  ; Only run logic when not sleeping
+  ld a, [rSleepCounter]
+  or a
+  jr nz, GameLoop
 
   ; Jump to appropriate loop based on screen state
   ld a, [rScreen]
@@ -671,25 +680,38 @@ ClearScreen:
 
 VblankInterrupt:
   push af
+    ; Every vblank, flag GameLoop as updateable.
+    ; GameLoop will unset the flag at the end of one cycle, and halt
+    ; until this vblank is called again.
     ld a, 1
     ld [rCanUpdate], a
 
-    ; Counts down to zero and stays zero until it is reset
+    ; Update sleep counter
+    ld a, [rSleepCounter]
+    or a
+    jr z, .doneUpdateSleepCounter
+    dec a
+    ld [rSleepCounter], a
+.doneUpdateSleepCounter:
+
+    ; Update animation counter
     ld a, [rResetAnimCounter]
     or a
-    jr z, .updateCounter
-.resetCounter:
+    jr z, .updateAnimCounter
+    ; reset counter
     xor a
     ld [rResetAnimCounter], a
     ld a, ANIM_FPS
     ld [rAnimCounter], a
-.updateCounter:
+.updateAnimCounter:
+    ; Counts down to zero and stays zero until it is reset
     ld a, [rAnimCounter]
     or a
-    jr z, .done
+    jr z, .doneUpdateAnimCounter
     dec a
     ld [rAnimCounter], a
-.done
+.doneUpdateAnimCounter
+
   pop af
   jp _HRAM ; DMA function, ends with reti
 
