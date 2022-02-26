@@ -39,7 +39,15 @@ CHARMAP "z", "Z"
 
 ; Game constants and macros
 
+macro set_game_state ; screen state constant
+  ld a, \1
+  ld [rScreenState], a
+endm
 
+macro set_game_screen ; screen constant
+  ld a, \1
+  ld [rScreen], a
+endm
 
 ; Constants
 
@@ -257,8 +265,8 @@ UpdateImgTitle:
 
   call TurnOnScreen
 
-  ld a, STATE_TITLE_FADE_IN
-  ld [rScreenState], a
+  set_game_state STATE_TITLE_FADE_IN
+
   jp GameLoop
 
 .fadein:
@@ -292,8 +300,7 @@ UpdateImgTitle:
   jp GameLoop
 .fadeinDone:
   call DrawCursor
-  ld a, STATE_TITLE_ACTIVE
-  ld [rScreenState], a
+  set_game_state STATE_TITLE_ACTIVE
   jp GameLoop
 
 .active:
@@ -333,8 +340,8 @@ UpdateImgTitle:
   xor a           ; fade 0 to 4 palette cycles
   ld [rFadeCounter], a
 
-  ld a, STATE_TITLE_FADE_OUT
-  ld [rScreenState], a
+  set_game_state STATE_TITLE_FADE_OUT
+
   jp GameLoop
 
 .fadeout:
@@ -374,10 +381,9 @@ UpdateImgTitle:
   call ClearScreen
   call ResetBGPalette
 
-  ld a, STATE_GAME_INIT
-  ld [rScreenState], a
-  ld a, SCREEN_GAME
-  ld [rScreen], a
+  set_game_state STATE_GAME_INIT
+  set_game_screen SCREEN_GAME
+
   jp GameLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -421,8 +427,8 @@ UpdateGameScreen:
 
   call TurnOnScreen
 
-  ld a, STATE_GAME_FADE_IN
-  ld [rScreenState], a
+  set_game_state STATE_GAME_FADE_IN
+
   jp GameLoop
 .fadein:
   ld a, [rAnimCounter]
@@ -455,8 +461,7 @@ UpdateGameScreen:
   jp GameLoop
 .fadeinDone:
   call DrawCursor
-  ld a, STATE_GAME_ACTIVE
-  ld [rScreenState], a
+  set_game_state STATE_GAME_ACTIVE
   jp GameLoop
 
 .active:
