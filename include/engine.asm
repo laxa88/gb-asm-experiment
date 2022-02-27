@@ -19,7 +19,8 @@ macro draw_text ; String, X, Y
 endm
 
 ; Note: make sure ReadInput is called first
-macro check_pressed ; INPUT_CONSTANT, flag, methodNameOnTrue
+; Destroys A
+macro jp_on_pressed ; INPUT_CONSTANT, flag, methodNameOnTrue
   ld a, [rInputsPressed]
   and \1
   jp \2, \3

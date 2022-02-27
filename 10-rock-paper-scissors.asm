@@ -319,9 +319,9 @@ UpdateTitleScreen:
 
 .active:
   call ReadInput
-  check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
-  check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
-  check_pressed INPUT_BTN_A, nz, .startGame
+  jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  jp_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
+  jp_on_pressed INPUT_BTN_A, nz, .startGame
   jp GameLoop
 .startGame:
   call PlaySfxConfirm
@@ -485,9 +485,9 @@ UpdateGameScreen:
   ; show selected hand image based on rCursorIndex
 
   call ReadInput
-  check_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
-  check_pressed INPUT_DPAD_UP, nz, MoveCursorUp
-  check_pressed INPUT_BTN_A, nz, .selectAction
+  jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  jp_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
+  jp_on_pressed INPUT_BTN_A, nz, .selectAction
   jp GameLoop
 .selectAction:
   ; Clear cursor sprite
