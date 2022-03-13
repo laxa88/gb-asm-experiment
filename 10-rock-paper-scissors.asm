@@ -5,6 +5,7 @@
 ; https://github.com/paulobruno/LearningGbAsm/tree/master/15_Interrupts
 
 INCLUDE "include/hardware.inc"
+INCLUDE "include/rand.asm"
 INCLUDE "include/util.asm"
 INCLUDE "include/engine.asm"
 
@@ -52,6 +53,13 @@ endm
 ; Constants
 
 DEF ANIM_FPS EQU 8           ; update 1 animation frame per n vblank cycles
+
+DEF OPT_ROCK EQU 0
+DEF OPT_PAPER EQU 1
+DEF OPT_SCISSORS EQU 2
+DEF RESULT_WIN EQU 1
+DEF RESULT_LOSE EQU 2
+DEF RESULT_DRAW EQU 3
 
 DEF SCREEN_TITLE EQU 0
 DEF SCREEN_GAME EQU 1
@@ -109,6 +117,8 @@ rFadeCounter: db
 rGameRounds: db
 rScreen: db
 rScreenState: db
+rOpponentOption: db
+rRoundResult: db
 
 SECTION "RST 0 - 7", ROM0[$00]
   ds $40 - @, 0      ; pad zero from @ (current address) to $40 (vblank interrupt)
@@ -540,18 +550,21 @@ UpdateGameScreen:
 .activeStep3:
   ; - show message "Shoot!"
   ; - show opponent's hand
+  ; - delay
   call ClearScreen
   draw_text StrBeforeResult4, 2, 11
-  ; TODO show opponent hand
+  call GetAndShowOpponentHand
+  ; ld a, OPT_ROCK
+  ; ld [rOpponentOption], a
   set_game_state STATE_GAME_ACTIVE_STEP_4
   call DoSleep60
   jp GameLoop
 
 .activeStep4:
-  ; - show message "Shucks! / Yeah!"
-  ; - delay 3000ms
+  ; - show message "Win / Lost / Draw"
+  ; - delay
   call ClearScreen
-  draw_text StrWin, 2, 11 ; TODO
+  call CalculateAndShowResult
   set_game_state STATE_GAME_ACTIVE_STEP_5
   call DoSleep60
   jp GameLoop
@@ -560,7 +573,7 @@ UpdateGameScreen:
   ; TODO
   ; - update score
   ; - (if game not yet ended) jump back to .active
-  ; - (if game ended) delay 500ms, jump to next step
+  ; - (if game ended) delay, jump to next step
   jp GameLoop
 
 .activeStep6:
@@ -568,7 +581,7 @@ UpdateGameScreen:
   ; - clear screen
   ; - show result message "You win/lose!"
   ; - play fanfare sound
-  ; - delay 1000ms
+  ; - delay
   ; - jump to fadeout
   jp GameLoop
 
@@ -602,17 +615,126 @@ UpdateGameOverScreen:
 
 SECTION "Game functions", ROM0
 
+; - Destroys A
+; - Saves result to [rRoundResult]
+; result: A = 0 (draw), 1 (win), 2 (lose)
+CompareRockTo:
+  ld a, [rOpponentOption]
+.checkRock:
+  cp OPT_ROCK
+  jr nz, .checkPaper
+  ld a, RESULT_DRAW
+  jr .checkEnd
+.checkPaper:
+  cp OPT_PAPER
+  jr nz, .checkScissors
+  ld a, RESULT_LOSE
+  jr .checkEnd
+.checkScissors:
+  ld a, RESULT_WIN
+.checkEnd:
+  ld [rRoundResult], a
+  ret
+
+ComparePaperTo:
+  ld a, [rOpponentOption]
+.checkRock:
+  cp OPT_ROCK
+  jr nz, .checkPaper
+  ld a, RESULT_WIN
+  jr .checkEnd
+.checkPaper:
+  cp OPT_PAPER
+  jr nz, .checkScissors
+  ld a, RESULT_DRAW
+  jr .checkEnd
+.checkScissors:
+  ld a, RESULT_LOSE
+.checkEnd:
+  ld [rRoundResult], a
+  ret
+
+CompareScissorTo:
+  ld a, [rOpponentOption]
+.checkRock:
+  cp OPT_ROCK
+  jr nz, .checkPaper
+  ld a, RESULT_LOSE
+  jr .checkEnd
+.checkPaper:
+  cp OPT_PAPER
+  jr nz, .checkScissors
+  ld a, RESULT_WIN
+  jr .checkEnd
+.checkScissors:
+  ld a, RESULT_DRAW
+.checkEnd:
+  ld [rRoundResult], a
+  ret
+
+; Reads opponent's hand value, compares with player's hand value,
+; then shows the result (player win or lose) message.
+CalculateAndShowResult:
+  push af
+  push bc
+    ; check rock against opponent
+    ld a, [rCursorIndex]
+    cp OPT_ROCK
+    call z, CompareRockTo
+    ; check paper against opponent
+    ld a, [rCursorIndex]
+    cp OPT_PAPER
+    call z, ComparePaperTo
+    ; check scissors against opponent
+    ld a, [rCursorIndex]
+    cp OPT_SCISSORS
+    call z, CompareScissorTo
+    ; check results
+.checkResultWin:
+    ld a, [rRoundResult]
+    cp RESULT_WIN
+    jr nz, .checkResultLose
+    draw_text StrWin, 2, 11
+    jr .resultEnd
+.checkResultLose:
+    cp RESULT_LOSE
+    jr nz, .resultDraw
+    draw_text StrLose, 2, 11
+    jr .resultEnd
+.resultDraw: ; default result is draw
+    draw_text StrDraw, 2, 11
+.resultEnd:
+  pop bc
+  pop af
+  ret
+
+; Randomises opponent's hand, saves the value
+; to rOpponentOption, and renders the image.
+; Note: Destroys all registers
+GetAndShowOpponentHand:
+  call Rand
+  ; modulo 4, but we only have 3 options (rock paper scissors),
+  ; so if it's zero, call Rand again.
+  and %00000011
+  jr z, GetAndShowOpponentHand
+  ld [rOpponentOption], a
+  ; TODO show opponent hand image
+  ret
+
 UpdateCurrentSelectedHandImage:
   ld a, [rCursorIndex]
 .checkRock:
-  cp 0
+  cp OPT_ROCK
   jr nz, .checkPaper
+  ; TODO draw rock image
 .checkPaper:
-  cp 1
+  cp OPT_PAPER
   jr nz, .checkScissors
+  ; TODO draw paper image
 .checkScissors:
-  cp 2
+  cp OPT_SCISSORS
   jr nz, .checkEnd
+  ; TODO draw scissors image
 .checkEnd:
   ret
 
@@ -845,6 +967,7 @@ StrBeforeResult3: db "Scissors...", 255
 StrBeforeResult4: db "Shoot!", 255
 
 StrWin: db "You won!", 255
+StrDraw: db "You draw!", 255
 StrLose: db "You lost...", 255
 
 SECTION "Tilemap", ROM0
