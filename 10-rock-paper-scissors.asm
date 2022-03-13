@@ -341,13 +341,7 @@ UpdateTitleScreen:
 .startGameSetRounds:
   ld [rGameRounds], a
 
-  ; Clear cursor sprite
-  xor a       ; sprite number
-  ld b, a     ; X
-  ld c, a     ; Y
-  ld e, a     ; cursor tile
-  ld h, a     ; sprite palette
-  call SetSprite
+  call ClearCursor
 
   ld a, DEFAULT_BG_PALETTE
   ld [rBGP], a    ; bg palette
@@ -490,14 +484,7 @@ UpdateGameScreen:
   jp_on_pressed INPUT_BTN_A, nz, .selectAction
   jp GameLoop
 .selectAction:
-  ; Clear cursor sprite
-  ; xor a       ; sprite number
-  ; ld b, a     ; X
-  ; ld c, a     ; Y
-  ; ld e, a     ; cursor tile
-  ; ld h, a     ; sprite palette
-  ; call SetSprite
-
+  call ClearCursor
   ; ld a, DEFAULT_BG_PALETTE
   ; ld [rBGP], a    ; bg palette
   ; xor a           ; fade 0 to 4 palette cycles
@@ -719,6 +706,17 @@ DrawCursor:
   pop de
   pop bc
   pop af
+  ret
+
+; Removes cursor sprite (assumed sprite 0)
+; Destroys a,b,c,e,h
+ClearCursor:
+  xor a       ; sprite number
+  ld b, a     ; X
+  ld c, a     ; Y
+  ld e, a     ; cursor tile
+  ld h, a     ; sprite palette
+  call SetSprite
   ret
 
 ; Screen flags are custom to the game, so cannot be in engine.asm
