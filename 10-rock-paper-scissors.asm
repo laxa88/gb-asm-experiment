@@ -713,10 +713,12 @@ CalculateAndShowResult:
 ; Note: Destroys all registers
 GetAndShowOpponentHand:
   call Rand
-  ; modulo 4, but we only have 3 options (rock paper scissors),
-  ; so if it's zero, call Rand again.
-  and %00000011
-  jr z, GetAndShowOpponentHand
+  ; modulo 3, but we only have 3 options (rock paper scissors),
+  ; so value is more than 0/1/2, call Rand again.
+  cp 3
+  jr c, .saveOption ; if (A-3) less than 3, it means A is 0/1/2
+  jr GetAndShowOpponentHand
+.saveOption:
   ld [rOpponentOption], a
   ; TODO show opponent hand image
   ret
