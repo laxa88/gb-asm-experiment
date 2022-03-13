@@ -66,15 +66,18 @@ DEF STATE_TITLE_FADE_OUT EQU 3
 
 DEF GAME_CURSOR_ORI_X EQU 5
 DEF GAME_CURSOR_ORI_Y EQU 15
+
 DEF STATE_GAME_INIT EQU 0
 DEF STATE_GAME_FADE_IN EQU 1
 DEF STATE_GAME_ACTIVE EQU 2
-DEF STATE_GAME_ACTIVE_STEP_1 EQU 21
-DEF STATE_GAME_ACTIVE_STEP_2 EQU 22
-DEF STATE_GAME_ACTIVE_STEP_3 EQU 23
-DEF STATE_GAME_ACTIVE_STEP_4 EQU 24
-DEF STATE_GAME_ACTIVE_STEP_5 EQU 25
-DEF STATE_GAME_ACTIVE_STEP_6 EQU 26
+DEF STATE_GAME_ACTIVE_STEP_1 EQU 6
+DEF STATE_GAME_ACTIVE_STEP_2 EQU 7
+DEF STATE_GAME_ACTIVE_STEP_2a EQU 8
+DEF STATE_GAME_ACTIVE_STEP_2b EQU 9
+DEF STATE_GAME_ACTIVE_STEP_3 EQU 10
+DEF STATE_GAME_ACTIVE_STEP_4 EQU 11
+DEF STATE_GAME_ACTIVE_STEP_5 EQU 12
+DEF STATE_GAME_ACTIVE_STEP_6 EQU 13
 DEF STATE_GAME_PLAYER_TURN EQU 3
 DEF STATE_GAME_SHOW_ROUND_RESULT EQU 4
 DEF STATE_GAME_FADE_OUT EQU 5
@@ -406,6 +409,20 @@ UpdateGameScreen:
   jp z, .active
   cp STATE_GAME_ACTIVE_STEP_1
   jp z, .activeStep1
+  cp STATE_GAME_ACTIVE_STEP_2
+  jp z, .activeStep2
+  cp STATE_GAME_ACTIVE_STEP_2a
+  jp z, .activeStep2a
+  cp STATE_GAME_ACTIVE_STEP_2b
+  jp z, .activeStep2b
+  cp STATE_GAME_ACTIVE_STEP_3
+  jp z, .activeStep3
+  cp STATE_GAME_ACTIVE_STEP_4
+  jp z, .activeStep4
+  cp STATE_GAME_ACTIVE_STEP_5
+  jp z, .activeStep5
+  cp STATE_GAME_ACTIVE_STEP_6
+  jp z, .activeStep6
 
   cp STATE_GAME_FADE_OUT
   jp z, .fadeout
@@ -475,9 +492,8 @@ UpdateGameScreen:
   jp GameLoop
 
 .active:
-  ; TODO
-  ; show selected hand image based on rCursorIndex
-
+  ; TODO: show selected hand image based on rCursorInde
+  call UpdateCurrentSelectedHandImage
   call ReadInput
   jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
   jp_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
@@ -491,7 +507,7 @@ UpdateGameScreen:
   ; ld [rFadeCounter], a
 
   ; - play selected sound
-  ; - delay 100ms
+  ; - delay
   call PlaySfxConfirm
   set_game_state STATE_GAME_ACTIVE_STEP_1
   call DoSleep30
@@ -499,26 +515,45 @@ UpdateGameScreen:
 
 .activeStep1:
   ; - clear clear screen
-  ; - delay 100ms
   call ClearScreen
+  set_game_state STATE_GAME_ACTIVE_STEP_2
   call DoSleep30
   jp GameLoop
 
 .activeStep2:
-  ; TODO
-  ; - show message "Rock... Paper... Scissors... Shoot!"
+  ; - show message "Rock... Paper... Scissors..."
+  draw_text StrBeforeResult1, 2, 11
+  set_game_state STATE_GAME_ACTIVE_STEP_2a
+  call DoSleep60
+  jp GameLoop
+.activeStep2a:
+  draw_text StrBeforeResult2, 2, 12
+  set_game_state STATE_GAME_ACTIVE_STEP_2b
+  call DoSleep60
+  jp GameLoop
+.activeStep2b:
+  draw_text StrBeforeResult3, 2, 13
+  set_game_state STATE_GAME_ACTIVE_STEP_3
+  call DoSleep60
   jp GameLoop
 
 .activeStep3:
-  ; TODO
+  ; - show message "Shoot!"
   ; - show opponent's hand
-  ; - delay delay 1000ms
+  call ClearScreen
+  draw_text StrBeforeResult4, 2, 11
+  ; TODO show opponent hand
+  set_game_state STATE_GAME_ACTIVE_STEP_4
+  call DoSleep60
   jp GameLoop
 
 .activeStep4:
-  ; TODO
   ; - show message "Shucks! / Yeah!"
   ; - delay 3000ms
+  call ClearScreen
+  draw_text StrWin, 2, 11 ; TODO
+  set_game_state STATE_GAME_ACTIVE_STEP_5
+  call DoSleep60
   jp GameLoop
 
 .activeStep5:
@@ -567,9 +602,30 @@ UpdateGameOverScreen:
 
 SECTION "Game functions", ROM0
 
+UpdateCurrentSelectedHandImage:
+  ld a, [rCursorIndex]
+.checkRock:
+  cp 0
+  jr nz, .checkPaper
+.checkPaper:
+  cp 1
+  jr nz, .checkScissors
+.checkScissors:
+  cp 2
+  jr nz, .checkEnd
+.checkEnd:
+  ret
+
 DoSleep30:
   push af
     ld a, 30
+    ld [rSleepCounter], a
+  pop af
+  ret
+
+DoSleep60:
+  push af
+    ld a, 60
     ld [rSleepCounter], a
   pop af
   ret
@@ -783,8 +839,10 @@ StrPaper: db "Paper", 255
 StrRock: db "Rock", 255
 StrScissors: db "Scissors", 255
 
-StrBeats: db "beats", 255
-StrLosesTo: db "loses to", 255
+StrBeforeResult1: db "Rock...", 255
+StrBeforeResult2: db "Paper...", 255
+StrBeforeResult3: db "Scissors...", 255
+StrBeforeResult4: db "Shoot!", 255
 
 StrWin: db "You won!", 255
 StrLose: db "You lost...", 255
