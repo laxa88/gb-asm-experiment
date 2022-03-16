@@ -543,17 +543,17 @@ UpdateGameScreen:
   ; - show message "Rock... Paper... Scissors..."
   draw_text StrBeforeResult1, 2, 11
   set_game_state STATE_GAME_ACTIVE_STEP_2a
-  call DoSleep60
+  call DoSleep30
   jp GameLoop
 .activeStep2a:
   draw_text StrBeforeResult2, 2, 12
   set_game_state STATE_GAME_ACTIVE_STEP_2b
-  call DoSleep60
+  call DoSleep30
   jp GameLoop
 .activeStep2b:
   draw_text StrBeforeResult3, 2, 13
   set_game_state STATE_GAME_ACTIVE_STEP_3
-  call DoSleep60
+  call DoSleep30
   jp GameLoop
 
 
