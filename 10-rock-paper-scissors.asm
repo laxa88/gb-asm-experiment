@@ -115,6 +115,8 @@ rCursorY: db
 rCursorIndex: db
 rFadeCounter: db
 rGameRounds: db
+rGameRoundsLeft: db
+rGameScore: db
 rScreen: db
 rScreenState: db
 rOpponentOption: db
@@ -272,6 +274,8 @@ UpdateTitleScreen:
   cp STATE_TITLE_FADE_OUT
   jp z, .fadeout
 
+
+
 .init:
   call TurnOffScreen
 
@@ -296,6 +300,8 @@ UpdateTitleScreen:
   set_game_state STATE_TITLE_FADE_IN
 
   jp GameLoop
+
+
 
 .fadein:
   ld a, [rAnimCounter]
@@ -330,6 +336,8 @@ UpdateTitleScreen:
   set_game_state STATE_TITLE_ACTIVE
   jp GameLoop
 
+
+
 .active:
   call ReadInput
   jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
@@ -353,6 +361,10 @@ UpdateTitleScreen:
   ld a, 1
 .startGameSetRounds:
   ld [rGameRounds], a
+  ld [rGameRoundsLeft], a ; decrements to zero before game ends
+
+  xor a
+  ld [rGameScore], a ; reset game score
 
   call ClearCursor
 
@@ -364,6 +376,8 @@ UpdateTitleScreen:
   set_game_state STATE_TITLE_FADE_OUT
 
   jp GameLoop
+
+
 
 .fadeout:
   ld a, [rAnimCounter]
@@ -437,6 +451,8 @@ UpdateGameScreen:
   cp STATE_GAME_FADE_OUT
   jp z, .fadeout
 
+
+
 .init:
   call TurnOffScreen
 
@@ -468,6 +484,9 @@ UpdateGameScreen:
   set_game_state STATE_GAME_FADE_IN
 
   jp GameLoop
+
+
+
 .fadein:
   ld a, [rAnimCounter]
   or a
@@ -501,6 +520,8 @@ UpdateGameScreen:
   set_game_state STATE_GAME_ACTIVE
   jp GameLoop
 
+
+
 .active:
   ; TODO: show selected hand image based on rCursorInde
   call UpdateCurrentSelectedHandImage
@@ -523,12 +544,16 @@ UpdateGameScreen:
   call DoSleep30
   jp GameLoop
 
+
+
 .activeStep1:
   ; - clear clear screen
   call ClearScreen
   set_game_state STATE_GAME_ACTIVE_STEP_2
   call DoSleep30
   jp GameLoop
+
+
 
 .activeStep2:
   ; - show message "Rock... Paper... Scissors..."
@@ -547,6 +572,8 @@ UpdateGameScreen:
   call DoSleep60
   jp GameLoop
 
+
+
 .activeStep3:
   ; - show message "Shoot!"
   ; - show opponent's hand
@@ -560,30 +587,66 @@ UpdateGameScreen:
   call DoSleep60
   jp GameLoop
 
+
+
 .activeStep4:
   ; - show message "Win / Lost / Draw"
   ; - delay
+  ; - loop or end game
   call ClearScreen
   call CalculateAndShowResult
   set_game_state STATE_GAME_ACTIVE_STEP_5
   call DoSleep60
   jp GameLoop
 
+
+
 .activeStep5:
-  ; TODO
-  ; - update score
   ; - (if game not yet ended) jump back to .active
   ; - (if game ended) delay, jump to next step
+  ld a, [rGameRounds]
+  ld b, a
+  ld a, [rGameRoundsLeft]
+  dec a
+  ld [rGameRoundsLeft], a ; save rounds
+  jr nz, .continueGame
+.endGame:
+  set_game_state STATE_GAME_ACTIVE_STEP_6
+  jr .endStep5
+.continueGame:
+  set_game_state STATE_GAME_INIT
+.endStep5:
+  call ResetCursorIndex
+  call ClearScreen
   jp GameLoop
 
+
+
 .activeStep6:
-  ; TODO
-  ; - clear screen
-  ; - show result message "You win/lose!"
-  ; - play fanfare sound
-  ; - delay
-  ; - jump to fadeout
+  ; - end game, check score and display final message
+  xor a ; clears carry flag
+  ld a, [rGameScore]
+  ld b, a
+  ld a, [rGameRounds]
+  rra ; shift bit right, i.e. divide 2 (round down)
+  cp b ; i.e. (rGameRounds / 2) - rGameScore
+  jr c, .winGame
+  draw_text StrLoseGame, 2, 13
+  ; TODO: play lose music
+  jr .endStep6
+.winGame:
+  draw_text StrWinGame, 2, 13
+  ; TODO: play win music
+.endStep6:
+  call DoSleep60 ; TODO increment this to match music length
+  xor a
+  ld [rScreen], a         ; SCREEN_TITLE
+  ld [rScreenState], a    ; STATE_TITLE_INIT
+  ; FIXME: looping back to title screen causes garbage.
+  ; should init every other variable
   jp GameLoop
+
+
 
 .fadeout:
   ; TODO
@@ -694,14 +757,21 @@ CalculateAndShowResult:
     ld a, [rRoundResult]
     cp RESULT_WIN
     jr nz, .checkResultLose
+    ; increment score on win
+    ld a, [rGameScore]
+    inc a
+    ld [rGameScore], a
+    ; show win message
     draw_text StrWin, 2, 11
     jr .resultEnd
 .checkResultLose:
     cp RESULT_LOSE
     jr nz, .resultDraw
+    ; show lose message
     draw_text StrLose, 2, 11
     jr .resultEnd
-.resultDraw: ; default result is draw
+.resultDraw:
+  ; show draw message by default
     draw_text StrDraw, 2, 11
 .resultEnd:
   pop bc
@@ -971,6 +1041,9 @@ StrBeforeResult4: db "Shoot!", 255
 StrWin: db "You won!", 255
 StrDraw: db "You draw!", 255
 StrLose: db "You lost...", 255
+
+StrWinGame: db "Victory!!", 255
+StrLoseGame: db "Defeat...", 255
 
 SECTION "Tilemap", ROM0
 
