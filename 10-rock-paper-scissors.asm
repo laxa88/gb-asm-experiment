@@ -172,20 +172,6 @@ EntryPoint:
   ld bc, $a0 - 1      ; 159 loops (160 times)
   z_ldir
 
-  call TurnOffScreen
-
-  ld de, ImgText
-  ld hl, $8800
-  ld bc, ImgTextEnd - ImgText
-  call CopyData
-
-  ld de, ImgTitle
-  ld hl, $9000
-  ld bc, ImgTitleEnd - ImgTitle
-  call CopyData
-
-  call TurnOnScreen
-
   ; During the first (blank) frame, initialize display registers
   call ResetBGPalette
   ld a, DEFAULT_OBJ_PALETTE
@@ -206,21 +192,7 @@ EntryPoint:
   ld [rIE], a
   ei
 
-  ; Init variables
-  xor a
-  ld [rAnimCounter], a
-  ld [rResetAnimCounter], a
-  ld [rSleepCounter], a
-  ld [rCursorIndex], a
-  ld [rFadeCounter], a
-  ld [rScreen], a         ; SCREEN_TITLE
-  ld [rScreenState], a    ; STATE_TITLE_INIT
-  call InitEngineVariables
-
-  ld a, TITLE_CURSOR_ORI_X
-  ld [rCursorX], a
-  ld a, TITLE_CURSOR_ORI_Y
-  ld [rCursorY], a
+  call InitGameVariables
 
   ; Init sound
   ld a, AUDENA_ON     ; enable sounds
@@ -277,7 +249,19 @@ UpdateTitleScreen:
 
 
 .init:
+  call InitGameVariables
+
   call TurnOffScreen
+
+  ld de, ImgText
+  ld hl, $8800
+  ld bc, ImgTextEnd - ImgText
+  call CopyData
+
+  ld de, ImgTitle
+  ld hl, $9000
+  ld bc, ImgTitleEnd - ImgTitle
+  call CopyData
 
   ld de, ImgTitleTilemap
   ld hl, $9800
@@ -967,6 +951,22 @@ ClearCursor:
   ld e, a     ; cursor tile
   ld h, a     ; sprite palette
   call SetSprite
+  ret
+
+InitGameVariables:
+  xor a
+  ld [rAnimCounter], a
+  ld [rResetAnimCounter], a
+  ld [rSleepCounter], a
+  ld [rCursorIndex], a
+  ld [rFadeCounter], a
+  ld [rScreen], a         ; SCREEN_TITLE
+  ld [rScreenState], a    ; STATE_TITLE_INIT
+
+  ld a, TITLE_CURSOR_ORI_X
+  ld [rCursorX], a
+  ld a, TITLE_CURSOR_ORI_Y
+  ld [rCursorY], a
   ret
 
 ; Screen flags are custom to the game, so cannot be in engine.asm
