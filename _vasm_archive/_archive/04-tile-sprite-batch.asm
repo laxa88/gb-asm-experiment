@@ -156,17 +156,19 @@ LCDWaitAgain:
 GetVDPScreenPos:
     xor a
     ld h, c     ; load Ypos to h
-    rr h        ; YYYYYYYY --------
-    rra         ;
-    rr h
-    rra
-    rr h
-    rra
-    or b        ;Add XPOS
-    ld l, a
-    ld a, h
-    add &98     ;The tilemap starts at &9800
-    ld h,a
+    rr h        ; ----YYYY
+    rra         ;          Y-------
+    rr h        ; -----YYY
+    rra         ;          YY------
+    rr h        ; ------YY
+    rra         ;          YYY-----
+    ; add x-pos
+    or b        ;          YYYXXXXX
+    ld l, a     ; ------YY YYYXXXXX (HL)
+    ld a, h     ;
+    ; The tilemap starts at &9800
+    add &98     ; 100110YY YYYXXXXX (10011000 + H)
+    ld h, a
     ret
 
 SpriteData:
