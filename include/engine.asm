@@ -227,9 +227,9 @@ DrawDigit:
   pop af
   ret
 
-; Draws character at position DE (YX-position):
+; Draws a tile at position DE (YX-position):
 ; - A = tile index
-; - DE = YX position
+; - DE = YX position, 0~31 (i.e. max 11111 per axis)
 DrawTile:
   ; get index offset (XY from tilemap start address $9800)
   ; print char
