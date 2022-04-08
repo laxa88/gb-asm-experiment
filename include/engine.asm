@@ -26,6 +26,14 @@ macro jp_on_pressed ; INPUT_CONSTANT, flag, methodNameOnTrue
   jp \2, \3
 endm
 
+; Note: make sure ReadInput is called first
+; Destroys A
+macro call_on_pressed ; INPUT_CONSTANT, flag, methodNameOnTrue
+  ld a, [rInputsPressed]
+  and \1
+  call \2, \3
+endm
+
 SECTION "Engine variables", WRAM0
 
 rInputs: db
@@ -35,6 +43,10 @@ rInputsReleased: db
 
 rCharX: db
 rCharY: db
+
+rTile: db ; current tilemap address of tile area being drawn
+zIXH: db ; memory location for X + width
+zIXL: db ; memory location for Y + height
 
 SECTION "Common functions", ROM0
 
@@ -257,6 +269,73 @@ DrawTile:
   pop hl
   ret
 
+macro draw_tile_area ; X, Y, W, H, tilemap address start
+  ld a, \1
+  ld b, a
+  ld a, \2
+  ld c, a
+  ld a, \3
+  ld h, a
+  ld a, \4
+  ld l, a
+  ld de, \5
+  call DrawTileArea
+endm
+
+; Draws an area of tiles. Destroys all registers.
+; Note: Make sure the tilemap data matches the W,H size.
+; - BC = X,Y (top-left)
+; - HL = W,H
+; - DE = tilemap address start
+DrawTileArea:
+  ld a, h
+  add b
+  ld [zIXH], a ; save X + W position
+  ld a, l
+  add c
+  ld [zIXL], a ; save Y + H position
+DrawTileY:
+  push bc
+DrawTileX:
+    call LCDWait
+    ; get bgmap address based on current XY position
+    call GetBGMapAddress  ; get bgmap address of current XY, save to HL
+    ld a, [de]
+    ld [hl], a          ; draw tile, i.e. load tile index into bgmap address (HL)
+    inc de              ; move to next tile index
+    inc b               ; increment X
+    ld a, [zIXH]
+    cp b                ; if current X reached (X+W), move to next row
+    jr nz, DrawTileX
+  pop bc
+  inc c                 ; increment Y (move to next row)
+  ld a, [zIXL]
+  cp c
+  jr nz, DrawTileY      ; if current Y reached (Y+H), we're done drawing
+  ret
+
+; Gets BG map address based on given XY position, saves it to HL.
+; - BC = X,Y
+; - HL = result BG map address
+; - Destroys A
+GetBGMapAddress:
+  xor a
+  ld h, c     ; load Ypos to h
+  rr h        ; ----YYYY
+  rra         ;          Y-------
+  rr h        ; -----YYY
+  rra         ;          YY------
+  rr h        ; ------YY
+  rra         ;          YYY-----
+  ; add x-pos
+  or b        ;          YYYXXXXX
+  ld l, a     ; ------YY YYYXXXXX (HL)
+  ld a, h     ;
+  ; The bg map starts at &9800
+  add $98     ; 100110YY YYYXXXXX (10011000 + HL)
+  ld h, a
+  ret
+
 ; Note: Don't forget to wait for VBlank before clearing tiles,
 ; otherwise some tiles will not be updated at read-only intervals.
 ;
@@ -271,22 +350,67 @@ ClearTiles:
   push de
   push hl
     ld a, 32
-    ld b, a
-    ld c, a
-    ld d, a
+    ld b, a       ; current row
+    ld c, a       ; current column
+    ld d, a       ; max column (32)
     ld hl, $9800
     ld a, e
 .loop:
+    ; Loops thru 32x32 (1024) map tiles and sets them all to E (the tile to clear with)
     ld [hli], a
     dec c
     jr nz, .loop
-    ld c, d ; reset C
+    ld c, d       ; reset column index to 32
     dec b
     jr nz, .loop
   pop hl
   pop de
   pop bc
   pop af
+  ret
+
+macro clear_tile_area ; X, Y, W, H, tilemap index to clear with, e.g. $80
+  ld a, \1
+  ld b, a
+  ld a, \2
+  ld c, a
+  ld a, \3
+  ld h, a
+  ld a, \4
+  ld l, a
+  ld a, \5
+  ld e, a
+  call FillTileArea
+endm
+
+; Fills an area with one tile. Destroys all registers.
+; - BC = X,Y (top-left)
+; - HL = W,H
+; - E = tile index
+FillTileArea:
+  ld a, h
+  add b
+  ld [zIXH], a ; save X + W position
+  ld a, l
+  add c
+  ld [zIXL], a ; save Y + H position
+FillTileY:
+  push bc
+FillTileX:
+    call LCDWait
+    ; get bgmap address based on current XY position
+    call GetBGMapAddress  ; get bgmap address of current XY, save to HL
+    ld a, e
+    ld [hl], a          ; draw tile, i.e. load tile index into bgmap address (HL)
+    inc b               ; increment X
+    ld a, [zIXH]
+    cp b                ; if current X reached (X+W), move to next row
+    jr nz, FillTileX
+  pop bc
+  inc c                 ; increment Y (move to next row)
+  ld a, [zIXL]
+  cp c
+  jr nz, FillTileY      ; if current Y reached (Y+H), we're done drawing
   ret
 
 ; Moves DrawString cursor to next line

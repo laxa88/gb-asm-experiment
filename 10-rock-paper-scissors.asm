@@ -324,9 +324,9 @@ UpdateTitleScreen:
 
 .active:
   call ReadInput
-  jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
-  jp_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
-  jp_on_pressed INPUT_BTN_A, nz, .startGame
+  call_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  call_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
+  call_on_pressed INPUT_BTN_A, nz, .startGame
   jp GameLoop
 .startGame:
   call PlaySfxConfirm
@@ -450,7 +450,7 @@ UpdateGameScreen:
   ld bc, ImgHandsEnd - ImgHands
   call CopyData
 
-  ; TODO draw the initial hand position
+  call UpdateCurrentSelectedHandImage
   ; TODO play game music
 
   draw_text StrPrompt, 2, 11
@@ -507,12 +507,12 @@ UpdateGameScreen:
 
 
 .active:
-  ; TODO: show selected hand image based on rCursorInde
-  call UpdateCurrentSelectedHandImage
   call ReadInput
-  jp_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
-  jp_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
-  jp_on_pressed INPUT_BTN_A, nz, .selectAction
+  call_on_pressed INPUT_DPAD_DOWN, nz, MoveCursorDown
+  call_on_pressed INPUT_DPAD_DOWN, nz, UpdateCurrentSelectedHandImage
+  call_on_pressed INPUT_DPAD_UP, nz, MoveCursorUp
+  call_on_pressed INPUT_DPAD_UP, nz, UpdateCurrentSelectedHandImage
+  call_on_pressed INPUT_BTN_A, nz, .selectAction
   jp GameLoop
 .selectAction:
   call ClearCursor
@@ -778,19 +778,22 @@ GetAndShowOpponentHand:
   ret
 
 UpdateCurrentSelectedHandImage:
+  clear_tile_area 6, 3, 7, 7, $80
   ld a, [rCursorIndex]
 .checkRock:
   cp OPT_ROCK
   jr nz, .checkPaper
-  ; TODO draw rock image
+  draw_tile_area 8, 5, 4, 4, ImgHandPlayerRockMap
+  jp .checkEnd
 .checkPaper:
   cp OPT_PAPER
   jr nz, .checkScissors
-  ; TODO draw paper image
+  draw_tile_area 7, 4, 5, 5, ImgHandPlayerPaperMap
+  jp .checkEnd
 .checkScissors:
   cp OPT_SCISSORS
   jr nz, .checkEnd
-  ; TODO draw scissors image
+  draw_tile_area 7, 4, 5, 5, ImgHandPlayerScissorsMap
 .checkEnd:
   ret
 
@@ -867,7 +870,7 @@ MoveCursorDown:
 .moveCursorDownOk:
   ld [rCursorIndex], a
   call DrawCursor
-  jp GameLoop
+  ret
 
 MoveCursorUp:
   call PlaySfxSelect
@@ -879,7 +882,7 @@ MoveCursorUp:
 .moveCursorUpOk:
   ld [rCursorIndex], a
   call DrawCursor
-  jp GameLoop
+  ret
 
 ResetBGPalette:
   ld a, DEFAULT_BG_PALETTE
@@ -1062,6 +1065,29 @@ ImgTitleTilemapEnd:
 ImgHands:
   incbin "./resource/rps-hands.2bpp"
 ImgHandsEnd:
+
+ImgHandPlayerRockMap:
+  db $00, $01, $02, $03
+  db $09, $0A, $0B, $0C
+  db $12, $13, $14, $15
+  db $1D, $1E, $1F, $20
+ImgHandPlayerRockMapEnd:
+
+ImgHandPlayerPaperMap:
+  db $04, $05, $06, $07, $08
+  db $0D, $0E, $0F, $10, $11
+  db $16, $17, $18, $19, $1A
+  db $21, $22, $23, $24, $25
+  db $29, $2A, $2B, $2C, $2D
+ImgHandPlayerPaperMapEnd:
+
+ImgHandPlayerScissorsMap:
+  db $04, $05, $06, $07, $08
+  db $0D, $0E, $0F, $10, $11
+  db $16, $17, $1B, $1C, $1A
+  db $06, $26, $27, $28, $25
+  db $06, $06, $2E, $2F, $30
+ImgHandPlayerScissorsMapEnd:
 
 ; TODO map positions for:
 ; left side scissors
