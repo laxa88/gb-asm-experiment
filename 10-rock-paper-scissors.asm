@@ -1089,6 +1089,29 @@ ImgHandPlayerScissorsMap:
   db $06, $06, $2E, $2F, $30
 ImgHandPlayerScissorsMapEnd:
 
+ImgHandEnemyRockMap:
+  db $31, $32, $33, $34
+  db $39, $3A, $3B, $3C
+  db $42, $43, $44, $45
+  db $4D, $4E, $4F, $50
+ImgHandEnemyRockMapEnd:
+
+ImgHandEnemyPaperMap:
+  db $35, $36, $06, $37, $38
+  db $3D, $3E, $3F, $40, $41
+  db $46, $47, $48, $49, $4A
+  db $51, $52, $53, $54, $55
+  db $59, $5A, $5B, $5C, $5D
+ImgHandEnemyPaperMapEnd:
+
+ImgHandEnemyScissorsMap:
+  db $35, $36, $06, $37, $38
+  db $3D, $3E, $3F, $40, $41
+  db $46, $4B, $4C, $49, $4A
+  db $51, $56, $57, $58, $06
+  db $5E, $5F, $60, $06, $06
+ImgHandEnemyScissorsMapEnd:
+
 ; TODO map positions for:
 ; left side scissors
 ; left side paper
