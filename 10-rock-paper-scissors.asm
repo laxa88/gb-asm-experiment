@@ -1146,11 +1146,3 @@ ImgHandEnemyScissorsMap:
   db $51, $56, $57, $58, $06
   db $5E, $5F, $60, $06, $06
 ImgHandEnemyScissorsMapEnd:
-
-; TODO map positions for:
-; left side scissors
-; left side paper
-; left side rock
-; right side scissors
-; right side paper
-; right side rock
