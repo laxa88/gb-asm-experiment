@@ -297,9 +297,9 @@ DrawTileArea:
 DrawTileY:
   push bc
 DrawTileX:
-    call LCDWait
     ; get bgmap address based on current XY position
     call GetBGMapAddress  ; get bgmap address of current XY, save to HL
+    call LCDWait
     ld a, [de]
     ld [hl], a          ; draw tile, i.e. load tile index into bgmap address (HL)
     inc de              ; move to next tile index
@@ -397,9 +397,9 @@ FillTileArea:
 FillTileY:
   push bc
 FillTileX:
-    call LCDWait
     ; get bgmap address based on current XY position
     call GetBGMapAddress  ; get bgmap address of current XY, save to HL
+    call LCDWait
     ld a, e
     ld [hl], a          ; draw tile, i.e. load tile index into bgmap address (HL)
     inc b               ; increment X
