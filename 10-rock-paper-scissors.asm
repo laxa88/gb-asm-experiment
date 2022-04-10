@@ -630,8 +630,6 @@ UpdateGameScreen:
   xor a
   ld [rScreen], a         ; SCREEN_TITLE
   ld [rScreenState], a    ; STATE_TITLE_INIT
-  ; FIXME: looping back to title screen causes garbage.
-  ; should init every other variable
   jp GameLoop
 
 
