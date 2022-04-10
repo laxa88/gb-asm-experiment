@@ -119,7 +119,8 @@ rGameRoundsLeft: db
 rGameScore: db
 rScreen: db
 rScreenState: db
-rOpponentOption: db
+rEnemyOption: db
+rPlayerOption: db
 rRoundResult: db
 
 SECTION "RST 0 - 7", ROM0[$00]
@@ -515,6 +516,10 @@ UpdateGameScreen:
   call_on_pressed INPUT_BTN_A, nz, .selectAction
   jp GameLoop
 .selectAction:
+  ; save current cursor index as player selected value
+  ld a, [rCursorIndex]
+  ld [rPlayerOption], a
+
   call ClearCursor
   ; ld a, DEFAULT_BG_PALETTE
   ; ld [rBGP], a    ; bg palette
@@ -560,13 +565,12 @@ UpdateGameScreen:
 
 .activeStep3:
   ; - show message "Shoot!"
-  ; - show opponent's hand
+  ; - show player and opponent's hand
   ; - delay
   call ClearScreen
   draw_text StrBeforeResult4, 2, 11
-  call GetAndShowOpponentHand
-  ; ld a, OPT_ROCK
-  ; ld [rOpponentOption], a
+  call GetAndShowEnemyHand
+  call ShowPlayerHand
   set_game_state STATE_GAME_ACTIVE_STEP_4
   call DoSleep60
   jp GameLoop
@@ -666,7 +670,7 @@ SECTION "Game functions", ROM0
 ; - Saves result to [rRoundResult]
 ; result: A = 0 (draw), 1 (win), 2 (lose)
 CompareRockTo:
-  ld a, [rOpponentOption]
+  ld a, [rEnemyOption]
 .checkRock:
   cp OPT_ROCK
   jr nz, .checkPaper
@@ -684,7 +688,7 @@ CompareRockTo:
   ret
 
 ComparePaperTo:
-  ld a, [rOpponentOption]
+  ld a, [rEnemyOption]
 .checkRock:
   cp OPT_ROCK
   jr nz, .checkPaper
@@ -702,7 +706,7 @@ ComparePaperTo:
   ret
 
 CompareScissorTo:
-  ld a, [rOpponentOption]
+  ld a, [rEnemyOption]
 .checkRock:
   cp OPT_ROCK
   jr nz, .checkPaper
@@ -763,18 +767,51 @@ CalculateAndShowResult:
   ret
 
 ; Randomises opponent's hand, saves the value
-; to rOpponentOption, and renders the image.
+; to rEnemyOption, and renders the image.
 ; Note: Destroys all registers
-GetAndShowOpponentHand:
+GetAndShowEnemyHand:
   call Rand
   ; modulo 3, but we only have 3 options (rock paper scissors),
   ; so value is more than 0/1/2, call Rand again.
   cp 3
   jr c, .saveOption ; if (A-3) less than 3, it means A is 0/1/2
-  jr GetAndShowOpponentHand
+  jr GetAndShowEnemyHand
 .saveOption:
-  ld [rOpponentOption], a
-  ; TODO show opponent hand image
+  ld [rEnemyOption], a
+.checkEnemyRock:
+  cp OPT_ROCK
+  jr nz, .checkEnemyPaper
+  draw_tile_area 4, 6, 4, 4, ImgHandEnemyRockMap
+  jr .checkEnemyEnd
+.checkEnemyPaper:
+  cp OPT_PAPER
+  jr nz, .checkEnemyScissors
+  draw_tile_area 4, 5, 5, 5, ImgHandEnemyPaperMap
+  jr .checkEnemyEnd
+.checkEnemyScissors:
+  cp OPT_SCISSORS
+  jr nz, .checkEnemyEnd
+  draw_tile_area 4, 5, 5, 5, ImgHandEnemyScissorsMap
+.checkEnemyEnd:
+  ret
+
+ShowPlayerHand:
+  ld a, [rPlayerOption]
+.checkPlayerRock:
+  cp OPT_ROCK
+  jr nz, .checkPlayerPaper
+  draw_tile_area 12, 6, 4, 4, ImgHandPlayerRockMap
+  jr .checkPlayerEnd
+.checkPlayerPaper:
+  cp OPT_PAPER
+  jr nz, .checkPlayerScissors
+  draw_tile_area 11, 5, 5, 5, ImgHandPlayerPaperMap
+  jr .checkPlayerEnd
+.checkPlayerScissors:
+  cp OPT_SCISSORS
+  jr nz, .checkPlayerEnd
+  draw_tile_area 11, 5, 5, 5, ImgHandPlayerScissorsMap
+.checkPlayerEnd:
   ret
 
 UpdateCurrentSelectedHandImage:
