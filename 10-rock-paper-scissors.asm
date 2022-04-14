@@ -204,7 +204,7 @@ EntryPoint:
   ld [rAUDVOL], a
 
   ; Init music
-  ld hl, quasar
+  ld hl, rockpaperscissorsbgm
   call hUGE_init
 
 GameLoop:
@@ -217,7 +217,7 @@ GameLoop:
   xor a
   ld [rCanUpdate], a  ; unsets flag
 
-  ; call PlayMusic
+  call PlayMusic
 
   ; Only run logic when not sleeping
   ld a, [rSleepCounter]
