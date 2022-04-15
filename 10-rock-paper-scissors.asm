@@ -203,10 +203,6 @@ EntryPoint:
   ld a, %11111111     ; 0111 0111 (max volume for SO2 and SO1)
   ld [rAUDVOL], a
 
-  ; Init music
-  ld hl, rockpaperscissorsbgm
-  call hUGE_init
-
 GameLoop:
   halt                ; pause game (conserves CPU power) until next interrupt
 
@@ -278,7 +274,8 @@ UpdateTitleScreen:
   ld a, 4         ; fade 4 palette cycles
   ld [rFadeCounter], a
 
-  ; TODO play title screen music
+  ld hl, rockpaperscissorsbgm
+  call hUGE_init
 
   call TurnOnScreen
 
@@ -452,7 +449,9 @@ UpdateGameScreen:
   call CopyData
 
   call UpdateCurrentSelectedHandImage
-  ; TODO play game music
+
+  ld hl, rockpaperscissorsgame
+  call hUGE_init
 
   draw_text StrPrompt, 2, 11
   draw_text StrRock, 5, 13      ; option 0

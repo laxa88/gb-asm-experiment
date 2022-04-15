@@ -2,7 +2,8 @@
 @echo off
 
 set filename=10-rock-paper-scissors
-set musicname=rockpaperscissorsbgm
+set musicname1=rockpaperscissorsbgm
+set musicname2=rockpaperscissorsgame
 set toolpath=tools\rgbds-0.5.1-win32\
 set binpath=bin\
 set resourcepath=resource\
@@ -12,7 +13,8 @@ echo ### Compiling files: %filename%
 @REM Assemble code into .obj files
 %toolpath%rgbasm -o %binpath%hUGEDriver.obj -i .. include/hUGEDriver.asm
 if ERRORLEVEL 1 exit
-%toolpath%rgbasm -o %binpath%%musicname%.obj -i .. %resourcepath%%musicname%.asm
+%toolpath%rgbasm -o %binpath%%musicname1%.obj -i .. %resourcepath%%musicname1%.asm
+%toolpath%rgbasm -o %binpath%%musicname2%.obj -i .. %resourcepath%%musicname2%.asm
 if ERRORLEVEL 1 exit
 %toolpath%rgbasm -o %binpath%%filename%.obj %filename%.asm
 if ERRORLEVEL 1 exit
@@ -23,7 +25,8 @@ echo ### Linking files...
 %toolpath%rgblink -o %binpath%%filename%.gb -n %binpath%%filename%.sym ^
   %binpath%%filename%.obj ^
   %binpath%hUGEDriver.obj ^
-  %binpath%%musicname%.obj
+  %binpath%%musicname1%.obj ^
+  %binpath%%musicname2%.obj
 if ERRORLEVEL 1 exit
 
 %toolpath%rgbfix -v -p 0xFF %binpath%%filename%.gb
