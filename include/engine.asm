@@ -82,9 +82,17 @@ WaitVBlank:
   ret
 
 ; Destroys A
+TurnOnScreen:
+  ld a, [rLCDC]
+  set 7, a
+  ld [rLCDC], a
+  ret
+
+; Destroys A
 TurnOffScreen:
   call WaitVBlank
-  xor a
+  ld a, [rLCDC]
+  res 7, a
   ld [rLCDC], a
   ret
 

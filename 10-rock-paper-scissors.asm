@@ -277,7 +277,9 @@ UpdateTitleScreen:
   ld hl, rockpaperscissorsbgm
   call hUGE_init
 
-  call TurnOnScreen
+  ; Init screen
+  ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
+  ld [rLCDC], a
 
   set_game_state STATE_TITLE_FADE_IN
 
@@ -1004,12 +1006,6 @@ InitGameVariables:
   ld [rCursorX], a
   ld a, TITLE_CURSOR_ORI_Y
   ld [rCursorY], a
-  ret
-
-; Screen flags are custom to the game, so cannot be in engine.asm
-TurnOnScreen:
-  ld a, LCDCF_ON | LCDCF_BGON | LCDCF_OBJON | LCDCF_BG8800
-  ld [rLCDC], a
   ret
 
 ; Turns off screen, clear tiles, then turns on screen
