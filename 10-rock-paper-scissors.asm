@@ -402,6 +402,9 @@ UpdateTitleScreen:
   set_game_state STATE_GAME_INIT
   set_game_screen SCREEN_GAME
 
+  ld hl, rockpaperscissorsgame
+  call hUGE_init
+
   jp GameLoop
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -451,9 +454,6 @@ UpdateGameScreen:
   call CopyData
 
   call UpdateCurrentSelectedHandImage
-
-  ld hl, rockpaperscissorsgame
-  call hUGE_init
 
   draw_text StrPrompt, 2, 11
   draw_text StrRock, 5, 13      ; option 0
